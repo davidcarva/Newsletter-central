@@ -23,7 +23,7 @@
   <h2 style="margin-top:0;">🎬 Roteiro de Short {% if roteiro and roteiro.usado %}<span class="badge usado">✅ usado</span>{% endif %}</h2>
   {% if roteiro %}
     <p style="color:var(--mut); font-size:12px; margin-bottom:12px;">Gerado em {{ roteiro.criado_em[:19].replace('T',' ') }} UTC</p>
-    <div class="roteiro-box">{{ roteiro.texto }}</div>
+    <div class="roteiro-box">{{ texto_html | safe }}</div>
     <p style="color:var(--mut); font-size:12px; margin-top:16px;">
       💡 <strong>Legenda das marcações:</strong> CAPSLOCK = ênfase forte | ... = pausa curta |
       [pausa] = pausa longa | ! = empolgação | quebra de linha = respiração.

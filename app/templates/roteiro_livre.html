@@ -25,7 +25,7 @@
 <section class="content">
   <h2 style="margin-top:0;">🎬 {{ r.titulo }} {% if r.usado %}<span class="badge usado">✅ usado</span>{% endif %}</h2>
   <p style="color:var(--mut); font-size:12px; margin-bottom:12px;">Atualizado em {{ r.criado_em[:19].replace('T',' ') }} UTC</p>
-  <div class="roteiro-box">{{ r.texto }}</div>
+  <div class="roteiro-box">{{ texto_html | safe }}</div>
   <p style="color:var(--mut); font-size:12px; margin-top:16px;">
     💡 <strong>Legenda das marcações:</strong> CAPSLOCK = ênfase forte | ... = pausa curta |
     [pausa] = pausa longa | ! = empolgação | quebra de linha = respiração.

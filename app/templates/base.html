@@ -13,15 +13,31 @@
   header nav a { color:var(--mut); text-decoration:none; margin-right:16px; font-size:14px; }
   header nav a:hover { color:var(--text); }
   main { max-width:1100px; margin:0 auto; padding:24px; display:grid; grid-template-columns:240px 1fr; gap:24px; }
+  main:has(.aside-wide) { grid-template-columns:340px 1fr; }
   aside { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:16px; height:fit-content; }
   aside h3 { font-size:12px; text-transform:uppercase; color:var(--mut); margin:0 0 12px; letter-spacing:.5px; }
   aside ul { list-style:none; padding:0; margin:0; }
   aside li { margin-bottom:8px; }
   aside a { color:var(--text); text-decoration:none; font-size:14px; }
   aside a:hover { color:var(--acc); }
+
+  .prompt-roteiro { margin-top:20px; padding-top:16px; border-top:1px solid var(--line); }
+  .prompt-roteiro .hint { font-size:12px; color:var(--mut); line-height:1.5; margin:0 0 10px; }
+  .prompt-roteiro textarea {
+    width:100%; background:#0f1115; border:1px solid var(--line); color:var(--text);
+    padding:10px; border-radius:6px; font-size:13px; font-family:inherit; line-height:1.5;
+    resize:vertical;
+  }
+  .prompt-roteiro-footer { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:8px; }
+  .prompt-roteiro-footer .hint { margin:0; }
+  .btn-mini-acc { border-color:var(--acc); color:var(--acc); white-space:nowrap; }
+  .btn-mini-acc:hover { background:var(--acc); color:#0f1115; }
+  .banda-ok { background:rgba(92,201,122,.15); color:#7cd99a; padding:8px 10px; border-radius:6px; font-size:12px; margin:0 0 10px; }
   section.content { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:24px; }
   .bloco { margin-bottom:32px; }
   .bloco h2 { font-size:20px; margin:0 0 12px; border-bottom:1px solid var(--line); padding-bottom:8px; }
+  .bloco-cabecalho { display:flex; justify-content:space-between; align-items:center; gap:12px; border-bottom:1px solid var(--line); padding-bottom:8px; margin-bottom:12px; }
+  .bloco-cabecalho h2 { border-bottom:none; padding-bottom:0; margin:0; }
   .item { padding:12px 0; border-bottom:1px dashed var(--line); }
   .item:last-child { border-bottom:none; }
   .item h4 { margin:0 0 4px; font-size:16px; }
@@ -64,15 +80,22 @@
   .btn-mini { background:transparent; color:var(--mut); border:1px solid var(--line); padding:4px 10px; border-radius:6px; font-size:12px; cursor:pointer; text-decoration:none; }
   .btn-mini:hover { color:var(--text); border-color:var(--text); }
 
-  /* Página do roteiro */
-  .roteiro-box { background:#0f1115; border:1px solid var(--line); border-radius:8px; padding:20px; white-space:pre-wrap; font-family:"Segoe UI",system-ui,sans-serif; font-size:15px; line-height:1.7; }
+  /* Página do roteiro (conteúdo renderizado de Markdown) */
+  .roteiro-box { background:#0f1115; border:1px solid var(--line); border-radius:8px; padding:20px; font-family:"Segoe UI",system-ui,sans-serif; font-size:15px; line-height:1.7; overflow-x:auto; }
   .roteiro-box strong { color:#ffd166; }
+  .roteiro-box p { margin:0 0 12px; }
+  .roteiro-box p:last-child { margin-bottom:0; }
+  .roteiro-box table { border-collapse:collapse; width:100%; margin:8px 0 16px; font-size:14px; }
+  .roteiro-box th, .roteiro-box td { border:1px solid var(--line); padding:10px 12px; text-align:left; vertical-align:top; }
+  .roteiro-box th { background:var(--panel); color:var(--acc); font-size:12px; text-transform:uppercase; letter-spacing:.5px; white-space:nowrap; }
+  .roteiro-box tr:nth-child(even) td { background:rgba(255,255,255,.02); }
 
   .badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
   .badge.tipo-livre   { background:rgba(110,168,254,.18); color:#9cc4ff; }
   .badge.tipo-noticia { background:rgba(92,201,122,.18); color:#7cd99a; }
   .badge.usado        { background:rgba(232,208,77,.2); color:#ffd76b; }
   .badge.usado.off    { background:transparent; color:var(--mut); border:1px solid var(--line); }
+  .badge.repetida     { background:rgba(154,160,173,.18); color:#b8bdc9; font-weight:500; white-space:nowrap; vertical-align:middle; margin-left:6px; }
 
   .filtros { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; padding-bottom:16px; border-bottom:1px solid var(--line); }
   .chip { padding:6px 12px; border:1px solid var(--line); border-radius:14px; font-size:13px; color:var(--mut); text-decoration:none; }

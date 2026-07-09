@@ -1,9 +1,11 @@
 """Camada de persistência simples com SQLite."""
+import os
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Iterable
+from zoneinfo import ZoneInfo
 
 DB_PATH = Path(__file__).parent.parent / "newsletter.db"
 
@@ -35,6 +37,9 @@ def _migrate(conn):
             conn.execute("ALTER TABLE roteiros_livres ADD COLUMN usado INTEGER NOT NULL DEFAULT 0")
         if "usado_em" not in existing:
             conn.execute("ALTER TABLE roteiros_livres ADD COLUMN usado_em TEXT")
+    if "itens" in {r["name"] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}:
+        if "repetida" not in cols("itens"):
+            conn.execute("ALTER TABLE itens ADD COLUMN repetida INTEGER NOT NULL DEFAULT 0")
 
 
 def init_db():
@@ -77,6 +82,7 @@ def init_db():
                 fonte TEXT,
                 cor TEXT NOT NULL DEFAULT '',
                 ordem INTEGER NOT NULL DEFAULT 0,
+                repetida INTEGER NOT NULL DEFAULT 0,
                 FOREIGN KEY (edicao_id) REFERENCES edicoes(id) ON DELETE CASCADE
             );
 
@@ -251,8 +257,8 @@ def salvar_itens(edicao_id: int, blocos: list[dict]):
         for bloco in blocos:
             for item in bloco.get("itens", []):
                 conn.execute(
-                    """INSERT INTO itens (edicao_id, tema, titulo, resumo, link, fonte, ordem)
-                       VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                    """INSERT INTO itens (edicao_id, tema, titulo, resumo, link, fonte, ordem, repetida)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                     (
                         edicao_id,
                         bloco["tema"],
@@ -261,6 +267,7 @@ def salvar_itens(edicao_id: int, blocos: list[dict]):
                         item["link"],
                         item.get("fonte", ""),
                         ordem,
+                        1 if item.get("repetida") else 0,
                     ),
                 )
                 ordem += 1
@@ -287,6 +294,15 @@ def obter_item(item_id: int) -> dict | None:
 def definir_cor_item(item_id: int, cor: str):
     with get_conn() as conn:
         conn.execute("UPDATE itens SET cor = ? WHERE id = ?", (cor, item_id))
+
+
+def definir_cor_tema_edicao(edicao_id: int, tema: str, cor: str):
+    """Aplica a cor a TODOS os itens de um tema dentro de uma edição."""
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE itens SET cor = ? WHERE edicao_id = ? AND tema = ?",
+            (cor, edicao_id, tema),
+        )
 
 
 def salvar_roteiro(item_id: int, texto: str) -> int:
@@ -462,16 +478,48 @@ def obter_tema(tema_id: int):
                 "feeds": [f["url"] for f in feeds]}
 
 
-def filtrar_novos(links: Iterable[str]) -> set[str]:
+def _inicio_do_dia_utc() -> str:
+    """Início do dia de HOJE no fuso configurado, como ISO em UTC naive
+    (mesmo formato dos timestamps gravados em `vistos`)."""
+    tz = ZoneInfo(os.getenv("TIMEZONE", "America/Sao_Paulo"))
+    inicio_local = datetime.now(tz).replace(hour=0, minute=0, second=0, microsecond=0)
+    return inicio_local.astimezone(timezone.utc).replace(tzinfo=None).isoformat()
+
+
+def classificar_vistos(links: Iterable[str]) -> dict[str, str]:
+    """Classifica cada link: 'novo' (nunca visto), 'hoje' (já apareceu em edição
+    de hoje) ou 'antigo' (visto em dia anterior)."""
     links = list(links)
     if not links:
-        return set()
+        return {}
     with get_conn() as conn:
         placeholders = ",".join("?" * len(links))
-        existentes = {
-            r[0]
+        vistos = {
+            r["link"]: r["visto_em"]
             for r in conn.execute(
-                f"SELECT link FROM vistos WHERE link IN ({placeholders})", links
+                f"SELECT link, visto_em FROM vistos WHERE link IN ({placeholders})", links
             ).fetchall()
         }
-    return set(links) - existentes
+    inicio_hoje = _inicio_do_dia_utc()
+    resultado = {}
+    for link in links:
+        if link not in vistos:
+            resultado[link] = "novo"
+        elif vistos[link] >= inicio_hoje:
+            resultado[link] = "hoje"
+        else:
+            resultado[link] = "antigo"
+    return resultado
+
+
+def itens_por_links(links: Iterable[str]) -> dict[str, dict]:
+    """Última versão exibida de cada link (pra reaproveitar título/resumo já resumidos)."""
+    links = list(links)
+    if not links:
+        return {}
+    with get_conn() as conn:
+        placeholders = ",".join("?" * len(links))
+        rows = conn.execute(
+            f"SELECT * FROM itens WHERE link IN ({placeholders}) ORDER BY id", links
+        ).fetchall()
+    return {r["link"]: dict(r) for r in rows}
