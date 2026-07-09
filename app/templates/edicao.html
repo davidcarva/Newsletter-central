@@ -1,0 +1,17 @@
+<h2 style="margin-top:0;">Edição de {{ data }}</h2>
+{% for bloco in blocos %}
+  <div class="bloco">
+    <h2>{{ bloco.tema }}</h2>
+    {% if bloco.vazio %}
+      <p class="empty">Sem novidades nas últimas 36h pra este tema.</p>
+    {% else %}
+      {% for item in bloco.itens %}
+        <div class="item">
+          <h4><a href="{{ item.link }}" target="_blank" rel="noopener">{{ item.titulo }}</a></h4>
+          <p>{{ item.resumo }}</p>
+          <div class="meta">{{ item.fonte }} · <a href="{{ item.link }}" target="_blank" rel="noopener" style="color:var(--mut);">abrir original ↗</a></div>
+        </div>
+      {% endfor %}
+    {% endif %}
+  </div>
+{% endfor %}

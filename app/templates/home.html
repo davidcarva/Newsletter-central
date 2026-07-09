@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% set cores = ['nenhum','vermelho','laranja','amarelo','verde','azul','roxo'] %}
+{% block body %}
+<aside>
+  <h3>Edições recentes</h3>
+  <ul>
+    {% for e in edicoes %}
+      <li><a href="/edicao/{{ e.id }}">#{{ e.id }} — {{ e.data }}</a></li>
+    {% else %}
+      <li class="empty">Nenhuma edição ainda.</li>
+    {% endfor %}
+  </ul>
+</aside>
+<section class="content">
+  {% if not edicao %}
+    <h2>Nenhuma edição gerada ainda</h2>
+    <p>Clique em <strong>Gerar agora</strong> no topo para criar a primeira edição.</p>
+  {% elif tem_itens %}
+    <h2 style="margin-top:0;">Edição de {{ edicao.data }}</h2>
+    {% for bloco in blocos %}
+      <div class="bloco">
+        <h2>{{ bloco.tema }}</h2>
+        {% for item in bloco.itens %}
+          <div id="item-{{ item.id }}" class="item {% if item.cor %}cor-{{ item.cor }}{% endif %}">
+            <h4><a href="{{ item.link }}" target="_blank" rel="noopener">{{ item.titulo }}</a></h4>
+            <p>{{ item.resumo }}</p>
+            <div class="meta">{{ item.fonte }} · <a href="{{ item.link }}" target="_blank" rel="noopener" style="color:var(--mut);">abrir original ↗</a></div>
+            <div class="item-acoes">
+              <span class="swatches">
+                {% for c in cores %}
+                  <form action="/itens/{{ item.id }}/cor" method="post" class="inline">
+                    <input type="hidden" name="cor" value="{{ '' if c=='nenhum' else c }}">
+                    <button type="submit" class="swatch s-{{ c }} {% if (c=='nenhum' and not item.cor) or item.cor==c %}sel{% endif %}" title="{{ c }}"></button>
+                  </form>
+                {% endfor %}
+              </span>
+              <form action="/itens/{{ item.id }}/roteiro" method="post" class="inline">
+                <button type="submit" class="btn-mini">🎬 Gerar roteiro</button>
+              </form>
+              <a class="btn-mini" href="/itens/{{ item.id }}/roteiro">Ver roteiro</a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endfor %}
+  {% else %}
+    {# Edição antiga, anterior ao recurso de itens — mostra o HTML salvo #}
+    {{ edicao.conteudo_html | safe }}
+    <p class="empty" style="margin-top:24px;">Esta edição foi gerada antes do recurso de roteiros/cores. Gere uma nova edição pra ter as novas funcionalidades.</p>
+  {% endif %}
+</section>
+{% endblock %}

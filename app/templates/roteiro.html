@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block body %}
+<aside>
+  <h3>Notícia</h3>
+  <p style="font-size:13px; color:var(--text); margin:0 0 8px;">{{ item.titulo }}</p>
+  <p style="font-size:12px; color:var(--mut); margin:0 0 12px;">{{ item.fonte }}</p>
+  <a class="btn-mini" href="{{ item.link }}" target="_blank" rel="noopener" style="display:block; text-align:center; margin-bottom:8px;">Abrir notícia ↗</a>
+  <a class="btn-mini" href="/edicao/{{ item.edicao_id }}#item-{{ item.id }}" style="display:block; text-align:center; margin-bottom:8px;">← Voltar para edição</a>
+  {% if roteiro %}
+    <form action="/roteiros/{{ roteiro.id }}/usado" method="post" style="margin-bottom:8px;">
+      <input type="hidden" name="usado" value="{{ 0 if roteiro.usado else 1 }}">
+      <input type="hidden" name="volta" value="/itens/{{ item.id }}/roteiro">
+      <button class="btn ghost" type="submit" style="width:100%;">
+        {% if roteiro.usado %}↩ Desmarcar uso{% else %}✅ Marcar como usado{% endif %}
+      </button>
+    </form>
+  {% endif %}
+  <form action="/itens/{{ item.id }}/roteiro" method="post">
+    <button class="btn" type="submit" style="width:100%;">🔄 Regerar roteiro</button>
+  </form>
+</aside>
+<section class="content">
+  <h2 style="margin-top:0;">🎬 Roteiro de Short {% if roteiro and roteiro.usado %}<span class="badge usado">✅ usado</span>{% endif %}</h2>
+  {% if roteiro %}
+    <p style="color:var(--mut); font-size:12px; margin-bottom:12px;">Gerado em {{ roteiro.criado_em[:19].replace('T',' ') }} UTC</p>
+    <div class="roteiro-box">{{ roteiro.texto }}</div>
+    <p style="color:var(--mut); font-size:12px; margin-top:16px;">
+      💡 <strong>Legenda das marcações:</strong> CAPSLOCK = ênfase forte | ... = pausa curta |
+      [pausa] = pausa longa | ! = empolgação | quebra de linha = respiração.
+    </p>
+  {% else %}
+    <p class="empty">Nenhum roteiro gerado ainda. Clique em <strong>"Regerar roteiro"</strong> ao lado pra criar.</p>
+  {% endif %}
+</section>
+{% endblock %}

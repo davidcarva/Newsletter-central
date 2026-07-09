@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% set cores = ['nenhum','vermelho','laranja','amarelo','verde','azul','roxo'] %}
+{% block body %}
+<aside>
+  <h3>Novo roteiro livre</h3>
+  <form action="/roteiros-livres/novo" method="post">
+    <label style="font-size:12px; color:var(--mut);">Tema (opcional)</label>
+    <select name="tema" style="width:100%; background:#0f1115; border:1px solid var(--line); color:var(--text); padding:8px; border-radius:6px; margin:4px 0 10px; font-size:14px;">
+      <option value="">— sem tema —</option>
+      {% for t in temas %}
+        <option value="{{ t }}" {% if t == tema_preselect %}selected{% endif %}>{{ t }}</option>
+      {% endfor %}
+    </select>
+    <label style="font-size:12px; color:var(--mut);">Título / tópico *</label>
+    <input type="text" name="titulo" required placeholder="Ex: 3 atalhos do Premiere que economizam 1h por dia" style="width:100%; margin:4px 0 10px;">
+    <label style="font-size:12px; color:var(--mut);">Contexto adicional (opcional)</label>
+    <textarea name="contexto" rows="5" placeholder="Cole aqui anotações, dados, ângulo que quer dar, exemplos específicos..." style="width:100%; background:#0f1115; border:1px solid var(--line); color:var(--text); padding:8px; border-radius:6px; margin:4px 0 10px; font-size:14px; font-family:inherit; resize:vertical;"></textarea>
+    <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--mut); margin-bottom:10px;">
+      <input type="checkbox" name="permitir_repetir" value="1">
+      Permitir repetir tópicos já usados (revisitar ângulo)
+    </label>
+    <button class="btn" type="submit" style="width:100%;">🎬 Gerar roteiro</button>
+  </form>
+  <p style="font-size:12px; color:var(--mut); margin-top:16px;">
+    Roteiros livres não dependem de notícia.
+    Use pra falar de tópicos atemporais, tutoriais, opiniões, ideias.
+  </p>
+</aside>
+<section class="content">
+  <h2 style="margin-top:0;">🎬 Roteiros livres</h2>
+  {% if not roteiros %}
+    <p class="empty">Nenhum roteiro livre criado ainda. Use o formulário ao lado pra criar o primeiro.</p>
+  {% else %}
+    {% for r in roteiros %}
+      <div id="r-{{ r.id }}" class="item {% if r.cor %}cor-{{ r.cor }}{% endif %}" style="margin-bottom:8px;">
+        <h4><a href="/roteiros-livres/{{ r.id }}" style="color:var(--text); text-decoration:none;">{{ r.titulo }}</a></h4>
+        <div class="meta">
+          {% if r.tema %}{{ r.tema }} · {% endif %}{{ r.criado_em[:19].replace('T',' ') }} UTC
+        </div>
+        <div class="item-acoes">
+          <span class="swatches">
+            {% for c in cores %}
+              <form action="/roteiros-livres/{{ r.id }}/cor" method="post" class="inline">
+                <input type="hidden" name="cor" value="{{ '' if c=='nenhum' else c }}">
+                <button type="submit" class="swatch s-{{ c }} {% if (c=='nenhum' and not r.cor) or r.cor==c %}sel{% endif %}" title="{{ c }}"></button>
+              </form>
+            {% endfor %}
+          </span>
+          <a class="btn-mini" href="/roteiros-livres/{{ r.id }}">Abrir</a>
+          <form action="/roteiros-livres/{{ r.id }}/remover" method="post" class="inline"
+                onsubmit="return confirm('Excluir este roteiro?');">
+            <button class="btn-mini" type="submit" style="color:#c75450; border-color:#c75450;">Excluir</button>
+          </form>
+        </div>
+      </div>
+    {% endfor %}
+  {% endif %}
+</section>
+{% endblock %}

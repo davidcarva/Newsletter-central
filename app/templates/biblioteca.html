@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block body %}
+<aside>
+  <h3>Filtros</h3>
+  <p style="font-size:12px; color:var(--mut); margin-top:0;">Por tema:</p>
+  <div style="display:flex; flex-direction:column; gap:6px;">
+    <a class="chip {% if not filtro_tema %}ativo{% endif %}" href="/biblioteca?usado={{ filtro_usado }}">Todos os temas</a>
+    {% for t in temas %}
+      <a class="chip {% if filtro_tema == t %}ativo{% endif %}" href="/biblioteca?tema={{ t | urlencode }}&usado={{ filtro_usado }}">{{ t }}</a>
+    {% endfor %}
+  </div>
+  <p style="font-size:12px; color:var(--mut); margin:18px 0 6px;">Por status:</p>
+  <div style="display:flex; flex-direction:column; gap:6px;">
+    <a class="chip {% if filtro_usado == 'todos' %}ativo{% endif %}" href="/biblioteca?tema={{ filtro_tema | urlencode }}&usado=todos">Todos</a>
+    <a class="chip {% if filtro_usado == 'nao_usados' %}ativo{% endif %}" href="/biblioteca?tema={{ filtro_tema | urlencode }}&usado=nao_usados">Não usados</a>
+    <a class="chip {% if filtro_usado == 'usados' %}ativo{% endif %}" href="/biblioteca?tema={{ filtro_tema | urlencode }}&usado=usados">✅ Usados</a>
+  </div>
+</aside>
+<section class="content">
+  <h2 style="margin-top:0;">📚 Biblioteca de roteiros</h2>
+  <p style="color:var(--mut); font-size:13px; margin-bottom:16px;">
+    Tudo num só lugar: roteiros de notícias + roteiros livres. Marque "usado" depois de
+    gravar um vídeo — a IA evita repetir abordagem na próxima geração no mesmo tema.
+  </p>
+  {% if not roteiros %}
+    <p class="empty">Nenhum roteiro com esses filtros.</p>
+  {% else %}
+    {% for r in roteiros %}
+      <div class="item {% if r.cor %}cor-{{ r.cor }}{% endif %}" style="margin-bottom:8px;">
+        <h4 style="margin-bottom:6px;">
+          <a href="{{ r.url }}" style="color:var(--text); text-decoration:none;">{{ r.titulo }}</a>
+        </h4>
+        <div class="meta" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          <span class="badge tipo-{{ r.tipo }}">{{ '🎬 Livre' if r.tipo == 'livre' else '📰 Notícia' }}</span>
+          {% if r.tema %}<span>{{ r.tema }}</span>{% endif %}
+          <span>· {{ r.criado_em[:10] }}</span>
+          {% if r.usado %}
+            <span class="badge usado">✅ usado em {{ (r.usado_em or '')[:10] }}</span>
+          {% endif %}
+        </div>
+        <div class="item-acoes">
+          <a class="btn-mini" href="{{ r.url }}">Abrir</a>
+          {% if r.tipo == 'livre' %}
+            <form action="/roteiros-livres/{{ r.id }}/usado" method="post" class="inline">
+              <input type="hidden" name="usado" value="{{ 0 if r.usado else 1 }}">
+              <input type="hidden" name="volta" value="/biblioteca?tema={{ filtro_tema | urlencode }}&usado={{ filtro_usado }}">
+              <button class="btn-mini" type="submit">{{ '↩ Desmarcar uso' if r.usado else '✅ Marcar como usado' }}</button>
+            </form>
+          {% else %}
+            <form action="/roteiros/{{ r.id }}/usado" method="post" class="inline">
+              <input type="hidden" name="usado" value="{{ 0 if r.usado else 1 }}">
+              <input type="hidden" name="volta" value="/biblioteca?tema={{ filtro_tema | urlencode }}&usado={{ filtro_usado }}">
+              <button class="btn-mini" type="submit">{{ '↩ Desmarcar uso' if r.usado else '✅ Marcar como usado' }}</button>
+            </form>
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block body %}
+<aside>
+  <h3>Como funciona</h3>
+  <p style="font-size:13px; color:var(--text); line-height:1.5;">
+    O texto que você salvar aqui vira parte do <strong>system prompt</strong> em
+    TODA geração de roteiro — de notícia ou livre.
+  </p>
+  <p style="font-size:13px; color:var(--mut); line-height:1.5;">
+    Use pra definir seu tom, persona, vocabulário, público-alvo, o que evitar, referências
+    de outros criadores etc. As regras técnicas (estrutura HOOK/DEV/CTA e marcações)
+    continuam valendo — este texto só ajusta o <em>estilo</em>.
+  </p>
+  <p style="font-size:12px; color:var(--mut); margin-top:16px;">
+    Alterações valem pra roteiros gerados <strong>a partir de agora</strong>.
+    Roteiros já criados não são afetados até você clicar em "Regerar" neles.
+  </p>
+</aside>
+<section class="content">
+  <h2 style="margin-top:0;">⚙️ Estilo pessoal do criador</h2>
+  {% if salvo %}
+    <p style="background:rgba(92,201,122,.15); color:#7cd99a; padding:10px; border-radius:6px; margin-bottom:16px;">
+      ✅ Salvo! Já vale pro próximo roteiro que você gerar.
+    </p>
+  {% endif %}
+  <form action="/config" method="post">
+    <label style="font-size:13px; color:var(--mut); display:block; margin-bottom:6px;">
+      Prompt-base (seu estilo, persona, público, tom, vícios de linguagem, referências…)
+    </label>
+    <textarea name="prompt_base" rows="18"
+              placeholder="Ex:&#10;- Sou criador de conteúdo sobre tecnologia e edição de vídeo, público 18-35 anos, tom informal mas técnico.&#10;- Falo em 1ª pessoa, chamo o espectador de 'você'.&#10;- Evito palavras clichê tipo 'incrível', 'jornada', 'quebrar a internet'.&#10;- Gosto de abrir com pergunta provocativa ou dado curioso.&#10;- No CTA sempre convido pra deixar comentário com opinião, não só like/inscrever.&#10;- Referências de estilo: Casimiro, MKBHD, Marco Túlio (canal Cortex)."
+              style="width:100%; background:#0f1115; border:1px solid var(--line); color:var(--text); padding:12px; border-radius:6px; font-size:14px; font-family:inherit; line-height:1.6; resize:vertical;">{{ prompt_base }}</textarea>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
+      <span style="font-size:12px; color:var(--mut);">
+        {% if prompt_base %}
+          {{ prompt_base|length }} caracteres salvos.
+        {% else %}
+          Nenhum estilo definido ainda — a IA usa o padrão dela.
+        {% endif %}
+      </span>
+      <button class="btn" type="submit">💾 Salvar estilo</button>
+    </div>
+  </form>
+
+  <details style="margin-top:24px;">
+    <summary style="cursor:pointer; color:var(--mut); font-size:13px;">💡 Ver dicas de o que colocar</summary>
+    <div style="padding:12px 0; color:#cdd1da; font-size:14px; line-height:1.7;">
+      <p><strong>Persona:</strong> quem você é, o que faz, do que entende — dá contexto pra IA calibrar profundidade.</p>
+      <p><strong>Público:</strong> idade, nível de conhecimento, o que ele já sabe / não sabe.</p>
+      <p><strong>Tom:</strong> formal? irônico? didático? provocativo? Dá exemplos de frases que soam como você.</p>
+      <p><strong>Vícios/proibições:</strong> palavras ou expressões que você evita (aquele clichê que todo mundo fala).</p>
+      <p><strong>Estrutura preferida do hook:</strong> pergunta? dado curioso? afirmação polêmica?</p>
+      <p><strong>Estrutura preferida do CTA:</strong> pedir comentário? enquete? enviar pra amigo?</p>
+      <p><strong>Referências:</strong> criadores/canais cujo estilo você admira — a IA reconhece nomes conhecidos e pode calibrar.</p>
+    </div>
+  </details>
+</section>
+{% endblock %}

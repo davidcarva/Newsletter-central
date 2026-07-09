@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block body %}
+<aside>
+  <h3>Adicionar tema</h3>
+  <form action="/temas/novo" method="post">
+    <input type="text" name="nome" placeholder="Ex: Astronomia" required style="width:100%; margin-bottom:8px;">
+    <button class="btn" type="submit" style="width:100%;">Criar</button>
+  </form>
+  <p style="font-size:12px; color:var(--mut); margin-top:16px;">
+    Depois de criar o tema, adicione URLs de feeds RSS confiáveis nele.
+    A IA <strong>não busca na web</strong> — só processa o que vem desses feeds.
+  </p>
+</aside>
+<section class="content">
+  <h2 style="margin-top:0;">Temas & fontes</h2>
+  {% if erro %}<p style="background:rgba(199,84,80,.15); color:#ff9a96; padding:10px; border-radius:6px; margin-bottom:16px;">⚠️ {{ erro }}</p>{% endif %}
+  {% for t in temas %}
+    <div class="tema-card">
+      <header>
+        <h3>{{ t.nome }} {% if not t.ativo %}<span style="color:var(--mut); font-weight:normal;">(inativo)</span>{% endif %}</h3>
+        <div>
+          <a class="btn" href="/roteiros-livres?tema={{ t.nome | urlencode }}" title="Criar roteiro avulso neste tema">🎬 Novo roteiro</a>
+          <form action="/temas/{{ t.id }}/buscar" method="post" class="inline">
+            <input type="hidden" name="janela" value="168">
+            <button class="btn" type="submit" title="Coleta extra nas últimas 7 dias, ignora itens já vistos">🔎 Buscar mais</button>
+          </form>
+          <form action="/temas/{{ t.id }}/toggle" method="post" class="inline">
+            <button class="btn ghost" type="submit">{{ "Desativar" if t.ativo else "Ativar" }}</button>
+          </form>
+          <form action="/temas/{{ t.id }}/remover" method="post" class="inline"
+                onsubmit="return confirm('Remover este tema e todas as suas fontes?');">
+            <button class="btn danger" type="submit">Excluir</button>
+          </form>
+        </div>
+      </header>
+      <div>
+        {% for f in t.feeds %}
+          <div class="feed-row">
+            <code>{{ f.url }}</code>
+            <form action="/feeds/{{ f.id }}/remover" method="post" class="inline">
+              <button class="btn ghost" type="submit" style="padding:2px 8px; font-size:12px;">×</button>
+            </form>
+          </div>
+        {% else %}
+          <div class="empty">Sem fontes ainda.</div>
+        {% endfor %}
+      </div>
+      <form action="/temas/{{ t.id }}/feeds/novo" method="post" style="margin-top:12px; display:flex; gap:8px;">
+        <input type="text" name="url" placeholder="URL do RSS — ex: https://exemplo.com/rss" required style="flex:1;">
+        <button class="btn" type="submit">Adicionar RSS</button>
+      </form>
+      <form action="/temas/{{ t.id }}/feeds/novo-youtube" method="post" style="margin-top:8px; display:flex; gap:8px;">
+        <input type="text" name="entrada" placeholder="Canal YouTube — @handle, URL ou channel_id (UC...)" required style="flex:1;">
+        <button class="btn" type="submit" style="background:#ff0033; color:white;">▶ Adicionar YouTube</button>
+      </form>
+    </div>
+  {% endfor %}
+</section>
+{% endblock %}

@@ -1,0 +1,35 @@
+# Configuração inicial de temas e fontes RSS
+# Você pode editar este arquivo OU usar a interface web em http://localhost:8000
+# Apenas as fontes listadas aqui serão consultadas — sem busca aberta na web.
+
+temas:
+  - nome: "Edição de Vídeo"
+    ativo: true
+    feeds:
+      - https://www.premiumbeat.com/blog/feed/
+      - https://nofilmschool.com/rss.xml
+      - https://www.provideocoalition.com/feed/
+      - https://blog.frame.io/feed/
+
+  - nome: "Avanços da IA"
+    ativo: true
+    feeds:
+      - https://openai.com/news/rss.xml
+      - https://blog.google/innovation-and-ai/technology/ai/rss/
+      - https://huggingface.co/blog/feed.xml
+      - https://deepmind.google/blog/rss.xml
+      - https://techcrunch.com/category/artificial-intelligence/feed/
+
+  - nome: "Pokémon"
+    ativo: true
+    feeds:
+      - https://www.pokemon.com/us/api/pokemon-news-rss
+      - https://nintendoeverything.com/tag/pokemon/feed/
+      - https://www.nintendolife.com/feeds/news
+
+  - nome: "Finanças"
+    ativo: true
+    feeds:
+      - https://www.infomoney.com.br/feed/
+      - https://www.suno.com.br/noticias/feed/
+      - https://einvestidor.estadao.com.br/feed/
