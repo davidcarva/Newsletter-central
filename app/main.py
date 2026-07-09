@@ -1,8 +1,10 @@
 """FastAPI: interface web + API."""
 from __future__ import annotations
+import html as html_mod
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
+import markdown as md
 import yaml
 from dotenv import load_dotenv
 from fastapi import FastAPI, Form, Request, HTTPException
@@ -18,6 +20,12 @@ from .summarizer import gerar_roteiro, gerar_roteiro_livre
 from .youtube import resolver_canal
 
 CORES_VALIDAS = {"", "vermelho", "laranja", "amarelo", "verde", "azul", "roxo"}
+
+
+def _render_md(texto: str) -> str:
+    """Roteiro (texto do modelo) -> HTML: tabelas Markdown viram <table>, quebras viram <br>.
+    Escapa o texto antes, então nenhum HTML vindo do modelo é executado."""
+    return md.markdown(html_mod.escape(texto), extensions=["tables", "nl2br"])
 
 logging.basicConfig(
     level=logging.INFO,
@@ -45,7 +53,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Newsletter Central", lifespan=lifespan)
 
 
-def _render_edicao(request: Request, edicao: dict | None):
+def _render_edicao(request: Request, edicao: dict | None, salvo_estilo: bool = False):
     edicoes = db.listar_edicoes(limit=15)
     blocos = db.itens_da_edicao(edicao["id"]) if edicao else []
     return templates.TemplateResponse(
@@ -56,21 +64,30 @@ def _render_edicao(request: Request, edicao: dict | None):
             "edicoes": edicoes,
             "blocos": blocos,
             "tem_itens": bool(blocos),
+            "prompt_roteiro": db.get_config("prompt_base_roteiro", ""),
+            "salvo_estilo": salvo_estilo,
         },
     )
 
 
 @app.get("/", response_class=HTMLResponse)
-def home(request: Request):
-    return _render_edicao(request, db.ultima_edicao())
+def home(request: Request, salvo_estilo: int = 0):
+    return _render_edicao(request, db.ultima_edicao(), salvo_estilo=bool(salvo_estilo))
 
 
 @app.get("/edicao/{edicao_id}", response_class=HTMLResponse)
-def ver_edicao(request: Request, edicao_id: int):
+def ver_edicao(request: Request, edicao_id: int, salvo_estilo: int = 0):
     edicao = db.obter_edicao(edicao_id)
     if not edicao:
         raise HTTPException(404)
-    return _render_edicao(request, edicao)
+    return _render_edicao(request, edicao, salvo_estilo=bool(salvo_estilo))
+
+
+@app.post("/estilo-lateral")
+def salvar_estilo_lateral(prompt_roteiro: str = Form(""), volta: str = Form("/")):
+    db.set_config("prompt_base_roteiro", prompt_roteiro.strip())
+    sep = "&" if "?" in volta else "?"
+    return RedirectResponse(f"{volta}{sep}salvo_estilo=1", status_code=303)
 
 
 @app.post("/itens/{item_id}/cor")
@@ -80,6 +97,14 @@ def definir_cor(item_id: int, cor: str = Form(...)):
     db.definir_cor_item(item_id, cor)
     item = db.obter_item(item_id)
     return RedirectResponse(f"/edicao/{item['edicao_id']}#item-{item_id}", status_code=303)
+
+
+@app.post("/edicao/{edicao_id}/tema-cor")
+def definir_cor_tema(edicao_id: int, tema: str = Form(...), cor: str = Form(...)):
+    if cor not in CORES_VALIDAS:
+        raise HTTPException(400, "Cor inválida")
+    db.definir_cor_tema_edicao(edicao_id, tema, cor)
+    return RedirectResponse(f"/edicao/{edicao_id}", status_code=303)
 
 
 @app.post("/itens/{item_id}/roteiro")
@@ -106,7 +131,12 @@ def ver_roteiro(request: Request, item_id: int):
     roteiro = db.obter_roteiro_mais_recente(item_id)
     return templates.TemplateResponse(
         "roteiro.html",
-        {"request": request, "item": item, "roteiro": roteiro},
+        {
+            "request": request,
+            "item": item,
+            "roteiro": roteiro,
+            "texto_html": _render_md(roteiro["texto"]) if roteiro else "",
+        },
     )
 
 
@@ -213,7 +243,7 @@ def roteiro_livre_ver(request: Request, rid: int):
         raise HTTPException(404)
     return templates.TemplateResponse(
         "roteiro_livre.html",
-        {"request": request, "r": r},
+        {"request": request, "r": r, "texto_html": _render_md(r["texto"])},
     )
 
 

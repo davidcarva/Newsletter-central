@@ -33,3 +33,18 @@ temas:
       - https://www.infomoney.com.br/feed/
       - https://www.suno.com.br/noticias/feed/
       - https://einvestidor.estadao.com.br/feed/
+
+  - nome: "Engenharia"
+    ativo: true
+    feeds:
+      # Blogs/newsletters gerais de engenharia
+      - https://hackaday.com/feed
+      - https://www.comsol.com/blogs/feed
+      - https://www.fractory.com/feed/
+      # SOLIDWORKS
+      - https://blogs.solidworks.com/solidworksblog/feed  # blog oficial
+      - https://www.youtube.com/feeds/videos.xml?channel_id=UCQYQc24ePj9JLt50cV580FQ  # SOLIDWORKS (canal oficial)
+      - https://www.youtube.com/feeds/videos.xml?channel_id=UCIuTkUaRI1cbne_DJAdgxDA  # GoEngineer
+      - https://www.youtube.com/feeds/videos.xml?channel_id=UC0NX5l_sS-y14xc9XtPzsPw  # SOLIDWORKS Tutorials
+      - https://www.youtube.com/feeds/videos.xml?channel_id=UC_IJ2fkcLpuyLY3oB-p7Wdg  # Hawk Ridge Systems
+      - https://www.youtube.com/feeds/videos.xml?channel_id=UCRmLnVaHsSAH0HkXfeoxG6w  # SolidWorks With Aryan Fallahi
