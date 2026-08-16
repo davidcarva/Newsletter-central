@@ -35,7 +35,8 @@ def configurado() -> bool:
 
 
 def _uid() -> str:
-    uid = (os.getenv("DIRETOR_UID") or "").strip()
+    # Tolera o valor colado com <>, aspas ou espaços (erro comum ao copiar do exemplo).
+    uid = (os.getenv("DIRETOR_UID") or "").strip().strip("<>").strip("\"'").strip()
     if not uid:
         raise DiretorErro("Falta DIRETOR_UID no .env (pegue em Configurações no Diretor).")
     return uid
