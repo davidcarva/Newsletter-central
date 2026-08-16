@@ -3,7 +3,7 @@ import os
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Iterable
 from zoneinfo import ZoneInfo
 
@@ -526,9 +526,12 @@ def _inicio_do_dia_utc() -> str:
     return inicio_local.astimezone(timezone.utc).replace(tzinfo=None).isoformat()
 
 
-def classificar_vistos(links: Iterable[str]) -> dict[str, str]:
-    """Classifica cada link: 'novo' (nunca visto), 'hoje' (já apareceu em edição
-    de hoje) ou 'antigo' (visto em dia anterior)."""
+def classificar_vistos(links: Iterable[str], janela_reexibir_horas: int = 48) -> dict[str, str]:
+    """Classifica cada link:
+    - 'novo': nunca visto
+    - 'hoje': já apareceu em edição de hoje
+    - 'ontem': visto antes de hoje mas ainda dentro da janela de re-exibição
+    - 'antigo': visto há mais tempo (não deve reaparecer)."""
     links = list(links)
     if not links:
         return {}
@@ -541,12 +544,15 @@ def classificar_vistos(links: Iterable[str]) -> dict[str, str]:
             ).fetchall()
         }
     inicio_hoje = _inicio_do_dia_utc()
+    limite_reexibir = (datetime.utcnow() - timedelta(hours=janela_reexibir_horas)).isoformat()
     resultado = {}
     for link in links:
         if link not in vistos:
             resultado[link] = "novo"
         elif vistos[link] >= inicio_hoje:
             resultado[link] = "hoje"
+        elif vistos[link] >= limite_reexibir:
+            resultado[link] = "ontem"
         else:
             resultado[link] = "antigo"
     return resultado

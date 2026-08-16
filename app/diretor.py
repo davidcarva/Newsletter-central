@@ -76,11 +76,15 @@ def _firestore():
         raise DiretorErro(f"Não consegui usar a credencial ({type(e).__name__}): {e}") from e
 
 
-def _decupar(texto: str, titulo: str = "") -> dict:
-    """Chama a API do Diretor pra transformar o texto em cenas."""
+def _decupar(texto: str, titulo: str = "", perfil: str = "simples") -> dict:
+    """Chama a API do Diretor pra transformar o texto em cenas.
+
+    perfil="simples" (padrão daqui): vídeo falado → poucos blocos de fala,
+    sem técnica/ângulo por cena. Use "elaborado" pra um plano de filmagem.
+    """
     url = (os.getenv("DIRETOR_API") or API_PADRAO).strip()
     try:
-        r = httpx.post(url, json={"texto": texto, "tema": titulo}, timeout=90)
+        r = httpx.post(url, json={"texto": texto, "tema": titulo, "perfil": perfil}, timeout=90)
     except httpx.HTTPError as e:
         raise DiretorErro(f"Não consegui falar com a API do Diretor: {e}") from e
     if r.status_code != 200:
@@ -127,7 +131,7 @@ def _normalizar(dados: dict, titulo_fallback: str) -> dict:
     }
 
 
-def enviar_roteiro(texto: str, titulo: str = "") -> dict:
+def enviar_roteiro(texto: str, titulo: str = "", perfil: str = "simples") -> dict:
     """Decupa o texto em cenas e publica na conta do usuário no Diretor.
 
     Devolve o roteiro gravado. Lança DiretorErro com mensagem amigável.
@@ -137,7 +141,7 @@ def enviar_roteiro(texto: str, titulo: str = "") -> dict:
         raise DiretorErro("Roteiro vazio.")
     uid = _uid()
     db_fs = _firestore()  # valida credencial antes de gastar chamada de IA
-    roteiro = _normalizar(_decupar(texto, titulo), titulo)
+    roteiro = _normalizar(_decupar(texto, titulo, perfil), titulo)
     try:
         db_fs.collection("users").document(uid).collection("roteiros").document(roteiro["id"]).set(roteiro)
     except Exception as e:

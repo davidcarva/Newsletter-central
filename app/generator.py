@@ -9,6 +9,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from . import db
 from .collector import coletar
 from .summarizer import resumir_tema
+from .youtube_transcript import enriquecer_itens as enriquecer_com_transcricoes
 
 log = logging.getLogger(__name__)
 
@@ -35,33 +36,52 @@ async def gerar_edicao_async() -> int:
     itens = await coletar(temas)
     log.info("Coletados %d itens brutos.", len(itens))
 
-    # Deduplica por link e classifica: novo / já visto HOJE (reexibe com label) / antigo (exclui)
+    # Enriquece itens de YouTube com transcrição (quando disponível) — dá material rico à IA
+    await enriquecer_com_transcricoes(itens)
+
+    # Deduplica por link e classifica: novo / hoje / ontem (< 48h e já visto) / antigo (exclui)
     por_link = {}
     for it in itens:
         por_link.setdefault(it.link, it)
     status = db.classificar_vistos(por_link.keys())
     itens_novos = [it for link, it in por_link.items() if status[link] == "novo"]
-    itens_repetidos = [it for link, it in por_link.items() if status[link] == "hoje"]
+    itens_rep_hoje = [it for link, it in por_link.items() if status[link] == "hoje"]
+    itens_rep_ontem = [it for link, it in por_link.items() if status[link] == "ontem"]
     log.info(
-        "%d novos, %d repetidos de hoje, %d antigos (excluídos).",
-        len(itens_novos), len(itens_repetidos),
-        len(por_link) - len(itens_novos) - len(itens_repetidos),
+        "%d novos, %d de hoje, %d de ontem (reexibidos), %d antigos (excluídos).",
+        len(itens_novos), len(itens_rep_hoje), len(itens_rep_ontem),
+        len(por_link) - len(itens_novos) - len(itens_rep_hoje) - len(itens_rep_ontem),
     )
 
     # Agrupa por tema
     por_tema: dict[str, list] = {}
     for it in itens_novos:
         por_tema.setdefault(it.tema, []).append(it)
-    por_tema_rep: dict[str, list] = {}
-    for it in itens_repetidos:
-        por_tema_rep.setdefault(it.tema, []).append(it)
+    por_tema_hoje: dict[str, list] = {}
+    for it in itens_rep_hoje:
+        por_tema_hoje.setdefault(it.tema, []).append(it)
+    por_tema_ontem: dict[str, list] = {}
+    for it in itens_rep_ontem:
+        por_tema_ontem.setdefault(it.tema, []).append(it)
 
-    # Reaproveita título/resumo já exibidos hoje (sem custo de IA)
-    exibidos_antes = db.itens_por_links([it.link for it in itens_repetidos])
+    # Reaproveita título/resumo já exibidos antes (sem custo de IA)
+    links_reexibir = [it.link for it in itens_rep_hoje] + [it.link for it in itens_rep_ontem]
+    exibidos_antes = db.itens_por_links(links_reexibir)
 
     def _ordena(bucket):
         bucket.sort(key=lambda x: (x.publicado is None, -(x.publicado.timestamp() if x.publicado else 0)))
         return bucket
+
+    def _fmt_reexibido(it, tipo_label: int):
+        """tipo_label: 1 = 'edição anterior de hoje', 2 = 'de ontem'."""
+        antigo = exibidos_antes.get(it.link)
+        return {
+            "titulo": antigo["titulo"] if antigo else it.titulo,
+            "resumo": antigo["resumo"] if antigo else (it.resumo_original or "")[:400],
+            "link": it.link,
+            "fonte": (antigo.get("fonte") if antigo else "") or it.fonte,
+            "repetida": tipo_label,
+        }
 
     blocos = []
     for tema in temas.keys():  # respeita ordem dos temas ativos
@@ -70,18 +90,10 @@ async def gerar_edicao_async() -> int:
         for r in resumidos:
             r["repetida"] = 0
 
-        repetidos_fmt = []
-        for it in _ordena(por_tema_rep.get(tema, [])):
-            antigo = exibidos_antes.get(it.link)
-            repetidos_fmt.append({
-                "titulo": antigo["titulo"] if antigo else it.titulo,
-                "resumo": antigo["resumo"] if antigo else (it.resumo_original or "")[:400],
-                "link": it.link,
-                "fonte": (antigo.get("fonte") if antigo else "") or it.fonte,
-                "repetida": 1,
-            })
+        hoje_fmt = [_fmt_reexibido(it, 1) for it in _ordena(por_tema_hoje.get(tema, []))]
+        ontem_fmt = [_fmt_reexibido(it, 2) for it in _ordena(por_tema_ontem.get(tema, []))]
 
-        itens_bloco = resumidos + repetidos_fmt
+        itens_bloco = resumidos + hoje_fmt + ontem_fmt
         blocos.append({"tema": tema, "itens": itens_bloco, "vazio": not itens_bloco})
 
     data_str = datetime.now().strftime("%d/%m/%Y")

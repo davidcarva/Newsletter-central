@@ -9,7 +9,7 @@ import httpx
 
 log = logging.getLogger(__name__)
 
-JANELA_HORAS = 36  # só considera itens publicados nas últimas N horas
+JANELA_HORAS = 48  # janela padrão — 48h pra pegar também vídeos de ontem
 TIMEOUT = 15.0
 
 

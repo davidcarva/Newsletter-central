@@ -63,7 +63,8 @@ def resumir_tema(tema: str, itens: list[Item]) -> list[dict]:
             "titulo": it.titulo,
             "fonte": it.fonte,
             "link": it.link,
-            "trecho": it.resumo_original[:800],
+            # Corte grande porque itens de YouTube trazem transcrição enriquecida
+            "trecho": it.resumo_original[:6000],
         }
         for idx, it in enumerate(itens)
     ]

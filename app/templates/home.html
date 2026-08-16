@@ -64,7 +64,8 @@
           <div id="item-{{ item.id }}" class="item {% if item.cor %}cor-{{ item.cor }}{% endif %}">
             <h4>
               <a href="{{ item.link }}" target="_blank" rel="noopener">{{ item.titulo }}</a>
-              {% if item.repetida %}<span class="badge repetida">🕓 edição anterior de hoje</span>{% endif %}
+              {% if item.repetida == 1 %}<span class="badge repetida">🕓 edição anterior de hoje</span>
+              {% elif item.repetida == 2 %}<span class="badge repetida" style="background:rgba(232,156,77,.18); color:#f0b57e;">🕓 de ontem — ainda dá pra usar</span>{% endif %}
               {% if item.tem_roteiro %}<a href="/itens/{{ item.id }}/roteiro" class="badge roteiro" title="Já existe roteiro pra esta notícia — clique para abrir">🎬 tem roteiro{% if item.num_roteiros > 1 %} ({{ item.num_roteiros }}){% endif %}</a>{% endif %}
             </h4>
             <p>{{ item.resumo }}</p>

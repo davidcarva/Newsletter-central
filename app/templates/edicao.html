@@ -9,7 +9,8 @@
         <div class="item">
           <h4>
             <a href="{{ item.link }}" target="_blank" rel="noopener">{{ item.titulo }}</a>
-            {% if item.repetida %}<span class="badge repetida">🕓 edição anterior de hoje</span>{% endif %}
+            {% if item.repetida == 1 %}<span class="badge repetida">🕓 edição anterior de hoje</span>
+            {% elif item.repetida == 2 %}<span class="badge repetida" style="background:rgba(232,156,77,.18); color:#f0b57e;">🕓 de ontem</span>{% endif %}
           </h4>
           <p>{{ item.resumo }}</p>
           <div class="meta">{{ item.fonte }} · <a href="{{ item.link }}" target="_blank" rel="noopener" style="color:var(--mut);">abrir original ↗</a></div>
