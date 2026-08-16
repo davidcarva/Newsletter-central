@@ -53,7 +53,25 @@ Opções no Windows:
 - Se a OpenAI falhar ou retornar lixo, caímos pra um fallback que usa o trecho cru do RSS.
 - Cada item da edição mostra a fonte e um link "abrir original" pra você conferir.
 
+## Ponte com o Diretor (app de cenas)
+
+Manda um roteiro daqui direto pro [Diretor](https://directors-app-scenes.vercel.app),
+já decupado em cenas (cada `[pausa]` vira um corte). O roteiro aparece na sua
+conta do app, em qualquer aparelho.
+
+**Configurar (uma vez):**
+
+1. `pip install -r requirements.txt` (traz o `firebase-admin`).
+2. No Diretor: **Configurações → Conta (nuvem) → Copiar ID**. Cole em `DIRETOR_UID` no `.env`.
+3. No [Console do Firebase](https://console.firebase.google.com) → ⚙ **Configurações do projeto**
+   → aba **Contas de serviço** → **Gerar nova chave privada**. Salve o `.json`
+   **fora do repositório** e aponte `DIRETOR_CREDENCIAL` pra ele.
+   > Esse arquivo dá acesso total ao projeto — nunca commite nem compartilhe.
+
+**Usar:** abra qualquer roteiro (de notícia ou livre) e clique em **🎬 Enviar pro Diretor**.
+
 ## Próximos passos
 
 - [ ] Bot Telegram (fase 2)
 - [ ] Push pro celular
+- [ ] Envio automático pro Diretor junto da geração diária

@@ -111,7 +111,10 @@ def resumir_tema(tema: str, itens: list[Item]) -> list[dict]:
 
 
 def _estilo_criador() -> str:
-    """Texto cru do prompt-base configurado pelo usuário (vazio se não definido)."""
+    """Texto do preset ativo (vazio se nenhum). Fallback: config antigo prompt_base_roteiro."""
+    preset = db.preset_ativo()
+    if preset and preset.get("texto"):
+        return preset["texto"].strip()
     return db.get_config("prompt_base_roteiro", "").strip()
 
 
@@ -269,3 +272,91 @@ def gerar_roteiro(titulo: str, resumo: str, fonte: str) -> str:
     except Exception as e:
         log.exception("Falha ao gerar roteiro: %s", e)
         return f"❌ Erro ao gerar roteiro: {e}"
+
+
+_ANALISE_SYSTEM = (
+    "Você é analista de conteúdo social + roteirista de vídeos curtos. "
+    "Vai receber informações de um post do Instagram/YouTube/etc. Sua tarefa:\n"
+    "1. ANALISAR o que o post faz — qual gancho ele usa, qual formato, qual angulação, "
+    "qual público, o que provavelmente performa bem ali.\n"
+    "2. SUGERIR um roteiro de vídeo curto ORIGINAL do criador, inspirado no post — "
+    "não é pra copiar; é pra dar a interpretação/resposta/complemento do criador.\n\n"
+    "REGRAS RÍGIDAS:\n"
+    "- NUNCA invente conteúdo do post que não esteja no material fornecido. Se a "
+    "legenda não veio, deixe explícito na análise ('legenda não fornecida — análise "
+    "baseada apenas no título/thumbnail').\n"
+    "- Não invente estatísticas, autor, data. Use só o que veio.\n"
+    "- No roteiro sugerido, siga o estilo do criador (se definido no ESTILO PESSOAL).\n\n"
+    "FORMATO da resposta (Markdown, exatamente estas seções):\n\n"
+    "## 🔎 Análise do post\n"
+    "- **Formato:** (reel/carrossel/foto/vídeo longo — o que der pra inferir)\n"
+    "- **Gancho:** (o que provavelmente segura o espectador nos primeiros 2s)\n"
+    "- **Ângulo:** (qual argumento/emoção o post explora)\n"
+    "- **Público-alvo aparente:** …\n"
+    "- **O que funciona bem:** …\n"
+    "- **O que dá pra melhorar / vazio de conteúdo pra explorar:** …\n\n"
+    "## 🎬 Roteiro sugerido (inspirado, não cópia)\n"
+    "🎬 HOOK (3-5s):\n"
+    "📢 DESENVOLVIMENTO (20-40s):\n"
+    "✨ CTA (3-5s):\n"
+    "📊 ESTIMATIVA: ~X segundos | ~Y palavras\n"
+)
+
+
+def analisar_post_e_sugerir(
+    url: str,
+    tipo: str,
+    titulo_extraido: str,
+    descricao_extraida: str,
+    autor_extraido: str,
+    legenda_manual: str | None,
+    observacoes: str | None,
+) -> str:
+    """Gera Markdown com análise do post + roteiro inspirado."""
+    client = _client()
+    if client is None:
+        return "⚠️ Sem chave OpenAI configurada."
+
+    partes = [f"URL do post ({tipo}): {url}"]
+    if titulo_extraido:
+        partes.append(f"Título/Autor (extraído do metadata): {titulo_extraido}")
+    if autor_extraido:
+        partes.append(f"Autor (metadata): {autor_extraido}")
+    if descricao_extraida:
+        partes.append(f"Descrição (metadata):\n{descricao_extraida}")
+    if legenda_manual:
+        partes.append(f"\nLegenda/transcrição colada pelo criador:\n{legenda_manual}")
+    else:
+        partes.append("\n⚠️ Legenda completa NÃO fornecida — analise só com base no que veio acima.")
+    if observacoes:
+        partes.append(f"\nObservações do criador (o que quer explorar):\n{observacoes}")
+    partes.append(
+        "\nProduza a resposta seguindo EXATAMENTE o formato definido no system prompt "
+        "(seções 🔎 e 🎬). Devolva SOMENTE o Markdown, sem introdução."
+    )
+    user_msg = "\n".join(partes)
+
+    try:
+        resp = client.chat.completions.create(
+            model=MODEL,
+            messages=[
+                {"role": "system", "content": _ANALISE_SYSTEM + _prompt_base_texto()},
+                {"role": "user", "content": user_msg},
+            ],
+            temperature=0.7,
+        )
+        return resp.choices[0].message.content.strip()
+    except Exception as e:
+        log.exception("Falha ao analisar post: %s", e)
+        return f"❌ Erro ao analisar post: {e}"
+
+
+def _prompt_base_texto() -> str:
+    """Formata o texto do preset ativo pra colar no system prompt (reuso interno)."""
+    estilo = _estilo_criador()
+    if not estilo:
+        return ""
+    return (
+        "\n\n═══ 🎙️ ESTILO PESSOAL DO CRIADOR (aplicar no roteiro sugerido) ═══\n"
+        f"{estilo}\n"
+    )

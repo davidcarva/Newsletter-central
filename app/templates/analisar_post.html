@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block body %}
+<aside>
+  <h3>Como funciona</h3>
+  <p style="font-size:13px; color:var(--text); line-height:1.5;">
+    Cole a URL de um post do <strong>Instagram</strong>, <strong>YouTube</strong> ou
+    qualquer site. O sistema tenta pegar título/descrição públicos.
+  </p>
+  <p style="font-size:12px; color:var(--mut); line-height:1.5;">
+    O Instagram frequentemente <strong>bloqueia bots</strong>. Se não vier nada,
+    cole a legenda manualmente pra IA conseguir analisar.
+  </p>
+  <p style="font-size:12px; color:var(--mut); margin-top:16px; line-height:1.5;">
+    <strong>Resultado:</strong> análise + roteiro sugerido, salvo automaticamente
+    na <a href="/biblioteca?tema=%F0%9F%8E%A8%20An%C3%A1lise">📚 Biblioteca</a>
+    com tema <code>🎨 Análise</code>.
+  </p>
+</aside>
+<section class="content">
+  <h2 style="margin-top:0;">🎨 Analisar post de rede social</h2>
+
+  {# Passo 1: buscar #}
+  <form action="/analisar-post/buscar" method="post" style="display:flex; gap:8px; margin-bottom:20px;">
+    <input type="text" name="url" required value="{{ url }}"
+           placeholder="https://www.instagram.com/reel/... ou https://youtube.com/..."
+           style="flex:1;">
+    <button class="btn" type="submit">🔎 Buscar metadados</button>
+  </form>
+
+  {# Preview do que foi extraído #}
+  {% if meta %}
+    {% if meta.ok %}
+      <div style="background:rgba(92,201,122,.08); border:1px solid rgba(92,201,122,.3); border-radius:8px; padding:14px; margin-bottom:20px;">
+        <p style="margin:0 0 6px; color:#7cd99a; font-size:13px; font-weight:600;">✅ Metadados extraídos ({{ meta.tipo }})</p>
+        {% if meta.titulo %}<p style="margin:4px 0;"><strong>Título:</strong> {{ meta.titulo }}</p>{% endif %}
+        {% if meta.autor %}<p style="margin:4px 0;"><strong>Autor:</strong> {{ meta.autor }}</p>{% endif %}
+        {% if meta.descricao %}<p style="margin:4px 0;"><strong>Descrição:</strong> {{ meta.descricao }}</p>{% endif %}
+        {% if meta.imagem %}
+          <p style="margin:8px 0 0;">
+            <img src="{{ meta.imagem }}" alt="preview" style="max-width:200px; border-radius:6px; border:1px solid var(--line);"
+                 referrerpolicy="no-referrer" loading="lazy">
+          </p>
+        {% endif %}
+      </div>
+    {% else %}
+      <div style="background:rgba(232,156,77,.08); border:1px solid rgba(232,156,77,.3); border-radius:8px; padding:14px; margin-bottom:20px;">
+        <p style="margin:0 0 4px; color:#e89c4d; font-size:13px; font-weight:600;">⚠️ Não deu pra extrair automaticamente</p>
+        <p style="margin:0; color:var(--mut); font-size:13px;">{{ meta.erro }}</p>
+      </div>
+    {% endif %}
+
+    {# Passo 2: complementar e gerar #}
+    <form action="/analisar-post/gerar" method="post">
+      <input type="hidden" name="url" value="{{ url }}">
+      <label style="font-size:13px; color:var(--mut); display:block; margin-bottom:6px;">
+        Legenda / transcrição {% if not meta.ok %}<span style="color:#e89c4d;">(recomendado — cole aqui pra IA analisar de verdade)</span>{% else %}(opcional — complementa o que veio){% endif %}
+      </label>
+      <textarea name="legenda" rows="6"
+                placeholder="Cole aqui a legenda do post do Instagram, ou a transcrição/descrição do vídeo do YouTube que você quer analisar..."
+                style="width:100%; background:#0f1115; border:1px solid var(--line); color:var(--text); padding:10px; border-radius:6px; font-family:inherit; font-size:14px; line-height:1.5; resize:vertical; margin-bottom:12px;"></textarea>
+
+      <label style="font-size:13px; color:var(--mut); display:block; margin-bottom:6px;">
+        Suas observações (opcional)
+      </label>
+      <textarea name="observacoes" rows="3"
+                placeholder="Ex: 'Quero fazer um vídeo respondendo esse take' ou 'Curti o gancho, quero adaptar pra edição de vídeo' ou 'Esse formato viraliza — quero copiar a estrutura'..."
+                style="width:100%; background:#0f1115; border:1px solid var(--line); color:var(--text); padding:10px; border-radius:6px; font-family:inherit; font-size:14px; line-height:1.5; resize:vertical; margin-bottom:12px;"></textarea>
+
+      <button class="btn" type="submit" style="width:100%;">🎬 Gerar análise + roteiro sugerido</button>
+    </form>
+  {% else %}
+    <p class="empty">Cole uma URL acima pra começar.</p>
+  {% endif %}
+</section>
+{% endblock %}

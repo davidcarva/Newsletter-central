@@ -12,26 +12,29 @@
   </ul>
 
   <div class="prompt-roteiro">
-    <h3>🎬 Estilo do roteiro</h3>
+    <h3>🎬 Preset de estilo</h3>
     <p class="hint">
-      Instruções aplicadas em <strong>todo roteiro</strong> gerado — de notícia ou livre.
-      Tom, persona, público-alvo, vícios de linguagem, referências etc.
-      (mesmo campo da página <a href="/config">⚙️ Estilo</a>.)
+      Escolha qual "voz" a IA usa nos roteiros. Trocar aqui vale <strong>a partir do próximo</strong>
+      roteiro gerado.
     </p>
-    {% if salvo_estilo %}
-      <p class="banda-ok">✅ Salvo! Vale pro próximo roteiro gerado.</p>
-    {% endif %}
-    <form action="/estilo-lateral" method="post">
+    <form action="/presets/ativar" method="post" style="margin-bottom:6px;">
       <input type="hidden" name="volta" value="{{ '/edicao/' ~ edicao.id if edicao else '/' }}">
-      <textarea name="prompt_roteiro" rows="10"
-                placeholder="Ex:&#10;- Tom informal mas técnico, público 18-35 anos.&#10;- Falo em 1ª pessoa, chamo o espectador de 'você'.&#10;- Evito clichês tipo 'incrível', 'quebrar a internet'.&#10;- Gosto de abrir com pergunta provocativa ou dado curioso.&#10;- Referências de estilo: Casimiro, MKBHD.">{{ prompt_roteiro }}</textarea>
-      <div class="prompt-roteiro-footer">
-        <span class="hint">
-          {% if prompt_roteiro %}{{ prompt_roteiro|length }} caracteres salvos.{% else %}Nenhum estilo definido ainda — a IA usa o padrão dela.{% endif %}
-        </span>
-        <button class="btn-mini btn-mini-acc" type="submit">💾 Salvar</button>
-      </div>
+      <select name="preset_id" onchange="this.form.submit()"
+              style="width:100%; background:#0f1115; border:1px solid var(--line); color:var(--text); padding:8px; border-radius:6px; font-size:14px;">
+        <option value="0" {% if not preset_ativo %}selected{% endif %}>— sem preset (IA padrão) —</option>
+        {% for p in presets %}
+          <option value="{{ p.id }}" {% if p.ativo %}selected{% endif %}>{{ p.nome }}</option>
+        {% endfor %}
+      </select>
+      <noscript><button type="submit" class="btn-mini" style="margin-top:6px;">Trocar</button></noscript>
     </form>
+    {% if preset_ativo and preset_ativo.texto %}
+      <details style="margin-top:6px;">
+        <summary class="hint" style="cursor:pointer;">Ver texto do preset ativo</summary>
+        <pre style="white-space:pre-wrap; font-family:inherit; font-size:12px; color:var(--mut); margin:6px 0 0; max-height:180px; overflow:auto;">{{ preset_ativo.texto }}</pre>
+      </details>
+    {% endif %}
+    <a class="btn-mini" href="/presets" style="display:block; text-align:center; margin-top:8px;">⚙️ Gerenciar presets</a>
   </div>
 </aside>
 <section class="content">
@@ -62,6 +65,7 @@
             <h4>
               <a href="{{ item.link }}" target="_blank" rel="noopener">{{ item.titulo }}</a>
               {% if item.repetida %}<span class="badge repetida">🕓 edição anterior de hoje</span>{% endif %}
+              {% if item.tem_roteiro %}<a href="/itens/{{ item.id }}/roteiro" class="badge roteiro" title="Já existe roteiro pra esta notícia — clique para abrir">🎬 tem roteiro{% if item.num_roteiros > 1 %} ({{ item.num_roteiros }}){% endif %}</a>{% endif %}
             </h4>
             <p>{{ item.resumo }}</p>
             <div class="meta">{{ item.fonte }} · <a href="{{ item.link }}" target="_blank" rel="noopener" style="color:var(--mut);">abrir original ↗</a></div>
@@ -75,9 +79,11 @@
                 {% endfor %}
               </span>
               <form action="/itens/{{ item.id }}/roteiro" method="post" class="inline">
-                <button type="submit" class="btn-mini">🎬 Gerar roteiro</button>
+                <button type="submit" class="btn-mini">{{ '🔄 Regerar' if item.tem_roteiro else '🎬 Gerar roteiro' }}</button>
               </form>
-              <a class="btn-mini" href="/itens/{{ item.id }}/roteiro">Ver roteiro</a>
+              {% if item.tem_roteiro %}
+                <a class="btn-mini" href="/itens/{{ item.id }}/roteiro">Abrir roteiro →</a>
+              {% endif %}
             </div>
           </div>
         {% endfor %}

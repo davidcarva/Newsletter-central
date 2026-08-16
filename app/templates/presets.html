@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block body %}
+<aside>
+  <h3>{% if preset_editando %}Editar preset{% else %}Novo preset{% endif %}</h3>
+  <form action="{% if preset_editando %}/presets/{{ preset_editando.id }}/atualizar{% else %}/presets/novo{% endif %}" method="post">
+    <label style="font-size:12px; color:var(--mut);">Nome *</label>
+    <input type="text" name="nome" required
+           value="{{ preset_editando.nome if preset_editando else '' }}"
+           placeholder="Ex: TikTok informal, Notícia séria, Estilo Casimiro"
+           style="width:100%; margin:4px 0 10px;">
+    <label style="font-size:12px; color:var(--mut);">Prompt (tom, persona, público, vícios, referências, formato)</label>
+    <textarea name="texto" rows="16"
+              placeholder="Ex:&#10;- Tom informal mas técnico, público 18-35.&#10;- Falo em 1ª pessoa, chamo o espectador de 'você'.&#10;- Evito clichês tipo 'incrível', 'quebrar a internet'.&#10;- Abro sempre com pergunta ou dado curioso.&#10;- Referências: MKBHD, Casimiro."
+              style="width:100%; background:#0f1115; border:1px solid var(--line); color:var(--text); padding:10px; border-radius:6px; font-size:13px; font-family:inherit; line-height:1.5; resize:vertical; margin:4px 0 10px;">{{ preset_editando.texto if preset_editando else '' }}</textarea>
+    <div style="display:flex; gap:8px;">
+      <button class="btn" type="submit" style="flex:1;">
+        {% if preset_editando %}💾 Salvar edição{% else %}➕ Criar preset{% endif %}
+      </button>
+      {% if preset_editando %}
+        <a class="btn ghost" href="/presets">Cancelar</a>
+      {% endif %}
+    </div>
+  </form>
+</aside>
+<section class="content">
+  <h2 style="margin-top:0;">⚙️ Presets de prompt</h2>
+  {% if erro %}
+    <p style="background:rgba(199,84,80,.15); color:#ff9a96; padding:10px; border-radius:6px; margin-bottom:16px;">⚠️ {{ erro }}</p>
+  {% endif %}
+  {% if salvo %}
+    <p style="background:rgba(92,201,122,.15); color:#7cd99a; padding:10px; border-radius:6px; margin-bottom:16px;">✅ Salvo!</p>
+  {% endif %}
+  <p style="color:var(--mut); font-size:13px; margin-bottom:16px;">
+    Cada preset é um "modo" de escrita. Ative um pra usar em todos os roteiros novos —
+    de notícia ou livres. Troque a qualquer momento pelo dropdown na página inicial.
+  </p>
+
+  {% if not presets %}
+    <p class="empty">Nenhum preset ainda. Crie o primeiro ao lado.</p>
+  {% else %}
+    {% for p in presets %}
+      <div class="item" style="margin-bottom:8px; {% if p.ativo %}border-left:4px solid #b06efe; padding-left:12px; background:rgba(176,110,254,.06);{% endif %}">
+        <h4 style="margin-bottom:4px;">
+          {{ p.nome }}
+          {% if p.ativo %}<span class="badge" style="background:rgba(176,110,254,.25); color:#c99cff;">✨ ATIVO</span>{% endif %}
+        </h4>
+        <p style="color:var(--mut); font-size:12px; margin:0 0 8px;">
+          {% if p.texto %}{{ p.texto|length }} caracteres · criado em {{ p.criado_em[:10] }}{% else %}(vazio){% endif %}
+        </p>
+        {% if p.texto %}
+          <details style="margin:6px 0;">
+            <summary style="cursor:pointer; color:var(--mut); font-size:12px;">Ver conteúdo</summary>
+            <pre style="white-space:pre-wrap; font-family:inherit; font-size:13px; color:#cdd1da; margin:8px 0 0; padding:10px; background:#0f1115; border-radius:4px; max-height:220px; overflow:auto;">{{ p.texto }}</pre>
+          </details>
+        {% endif %}
+        <div class="item-acoes">
+          {% if not p.ativo %}
+            <form action="/presets/{{ p.id }}/ativar" method="post" class="inline">
+              <button class="btn-mini" type="submit" style="color:#c99cff; border-color:#b06efe;">✨ Ativar</button>
+            </form>
+          {% endif %}
+          <a class="btn-mini" href="/presets?editar={{ p.id }}">✏️ Editar</a>
+          <form action="/presets/{{ p.id }}/remover" method="post" class="inline"
+                onsubmit="return confirm('Excluir o preset {{ p.nome }}?');">
+            <button class="btn-mini" type="submit" style="color:#c75450; border-color:#c75450;">🗑 Excluir</button>
+          </form>
+        </div>
+      </div>
+    {% endfor %}
+  {% endif %}
+</section>
+{% endblock %}

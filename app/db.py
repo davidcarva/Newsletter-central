@@ -113,9 +113,43 @@ def init_db():
                 usado INTEGER NOT NULL DEFAULT 0,
                 usado_em TEXT
             );
+
+            CREATE TABLE IF NOT EXISTS agendamentos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                hora INTEGER NOT NULL,
+                minuto INTEGER NOT NULL,
+                ativo INTEGER NOT NULL DEFAULT 1,
+                UNIQUE(hora, minuto)
+            );
+
+            CREATE TABLE IF NOT EXISTS presets_prompt (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nome TEXT UNIQUE NOT NULL,
+                texto TEXT NOT NULL DEFAULT '',
+                criado_em TEXT NOT NULL
+            );
             """
         )
         _migrate(conn)
+        _seed_preset_padrao(conn)
+
+
+def _seed_preset_padrao(conn):
+    """Migra o antigo prompt_base_roteiro para o novo modelo de presets.
+    Se não há presets AND o antigo config tem texto, cria 'Padrão' e ativa."""
+    tem_preset = conn.execute("SELECT COUNT(*) FROM presets_prompt").fetchone()[0]
+    if tem_preset > 0:
+        return
+    row = conn.execute("SELECT valor FROM config WHERE chave = 'prompt_base_roteiro'").fetchone()
+    texto = (row["valor"] if row else "").strip()
+    cur = conn.execute(
+        "INSERT INTO presets_prompt (nome, texto, criado_em) VALUES (?, ?, ?)",
+        ("Padrão", texto, datetime.utcnow().isoformat()),
+    )
+    conn.execute(
+        "INSERT OR REPLACE INTO config (chave, valor) VALUES ('preset_ativo_id', ?)",
+        (str(cur.lastrowid),),
+    )
 
 
 def seed_from_yaml(yaml_data: dict):
@@ -274,14 +308,20 @@ def salvar_itens(edicao_id: int, blocos: list[dict]):
 
 
 def itens_da_edicao(edicao_id: int) -> list[dict]:
-    """Retorna itens agrupados por tema, ordem preservada."""
+    """Retorna itens agrupados por tema, ordem preservada.
+    Cada item vem com `tem_roteiro` e `num_roteiros` pra UI destacar."""
     with get_conn() as conn:
         rows = conn.execute(
-            "SELECT * FROM itens WHERE edicao_id = ? ORDER BY ordem", (edicao_id,)
+            """SELECT i.*,
+                      (SELECT COUNT(*) FROM roteiros r WHERE r.item_id = i.id) AS num_roteiros
+               FROM itens i WHERE i.edicao_id = ? ORDER BY i.ordem""",
+            (edicao_id,),
         ).fetchall()
         agrupado: dict[str, list[dict]] = {}
         for r in rows:
-            agrupado.setdefault(r["tema"], []).append(dict(r))
+            d = dict(r)
+            d["tem_roteiro"] = d["num_roteiros"] > 0
+            agrupado.setdefault(d["tema"], []).append(d)
         return [{"tema": tema, "itens": its} for tema, its in agrupado.items()]
 
 
@@ -523,3 +563,156 @@ def itens_por_links(links: Iterable[str]) -> dict[str, dict]:
             f"SELECT * FROM itens WHERE link IN ({placeholders}) ORDER BY id", links
         ).fetchall()
     return {r["link"]: dict(r) for r in rows}
+
+
+# ---------- Agendamentos ----------
+
+def listar_agendamentos() -> list[dict]:
+    with get_conn() as conn:
+        return [
+            dict(r) for r in conn.execute(
+                "SELECT * FROM agendamentos ORDER BY hora, minuto"
+            ).fetchall()
+        ]
+
+
+def agendamentos_ativos() -> list[dict]:
+    with get_conn() as conn:
+        return [
+            dict(r) for r in conn.execute(
+                "SELECT * FROM agendamentos WHERE ativo = 1 ORDER BY hora, minuto"
+            ).fetchall()
+        ]
+
+
+def adicionar_agendamento(hora: int, minuto: int) -> int | None:
+    """Retorna id novo ou None se já existir."""
+    if not (0 <= hora <= 23 and 0 <= minuto <= 59):
+        raise ValueError("hora/minuto fora do intervalo")
+    with get_conn() as conn:
+        try:
+            cur = conn.execute(
+                "INSERT INTO agendamentos (hora, minuto, ativo) VALUES (?, ?, 1)",
+                (hora, minuto),
+            )
+            return cur.lastrowid
+        except sqlite3.IntegrityError:
+            return None  # duplicado
+
+
+def toggle_agendamento(ag_id: int):
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE agendamentos SET ativo = 1 - ativo WHERE id = ?", (ag_id,)
+        )
+
+
+def remover_agendamento(ag_id: int):
+    with get_conn() as conn:
+        conn.execute("DELETE FROM agendamentos WHERE id = ?", (ag_id,))
+
+
+# ---------- Presets de prompt ----------
+
+def listar_presets() -> list[dict]:
+    ativo_id = _preset_ativo_id()
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT id, nome, texto, criado_em FROM presets_prompt ORDER BY nome"
+        ).fetchall()
+    resultado = []
+    for r in rows:
+        d = dict(r)
+        d["ativo"] = d["id"] == ativo_id
+        resultado.append(d)
+    return resultado
+
+
+def obter_preset(preset_id: int) -> dict | None:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM presets_prompt WHERE id = ?", (preset_id,)
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def criar_preset(nome: str, texto: str) -> int | None:
+    nome = nome.strip()
+    if not nome:
+        raise ValueError("Nome vazio")
+    with get_conn() as conn:
+        try:
+            cur = conn.execute(
+                "INSERT INTO presets_prompt (nome, texto, criado_em) VALUES (?, ?, ?)",
+                (nome, texto, datetime.utcnow().isoformat()),
+            )
+            return cur.lastrowid
+        except sqlite3.IntegrityError:
+            return None  # nome duplicado
+
+
+def atualizar_preset(preset_id: int, nome: str, texto: str) -> bool:
+    """Retorna False se o novo nome conflita com outro preset."""
+    nome = nome.strip()
+    if not nome:
+        raise ValueError("Nome vazio")
+    with get_conn() as conn:
+        try:
+            conn.execute(
+                "UPDATE presets_prompt SET nome = ?, texto = ? WHERE id = ?",
+                (nome, texto, preset_id),
+            )
+            return True
+        except sqlite3.IntegrityError:
+            return False
+
+
+def remover_preset(preset_id: int):
+    with get_conn() as conn:
+        conn.execute("DELETE FROM presets_prompt WHERE id = ?", (preset_id,))
+        # Se era o ativo, limpa
+        row = conn.execute("SELECT valor FROM config WHERE chave = 'preset_ativo_id'").fetchone()
+        if row and row["valor"] == str(preset_id):
+            conn.execute("DELETE FROM config WHERE chave = 'preset_ativo_id'")
+
+
+def _preset_ativo_id() -> int | None:
+    with get_conn() as conn:
+        row = conn.execute("SELECT valor FROM config WHERE chave = 'preset_ativo_id'").fetchone()
+    try:
+        return int(row["valor"]) if row else None
+    except (TypeError, ValueError):
+        return None
+
+
+def preset_ativo() -> dict | None:
+    pid = _preset_ativo_id()
+    if pid is None:
+        return None
+    return obter_preset(pid)
+
+
+def ativar_preset(preset_id: int):
+    if not obter_preset(preset_id):
+        return
+    with get_conn() as conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO config (chave, valor) VALUES ('preset_ativo_id', ?)",
+            (str(preset_id),),
+        )
+
+
+def desativar_presets():
+    with get_conn() as conn:
+        conn.execute("DELETE FROM config WHERE chave = 'preset_ativo_id'")
+
+
+def seed_agendamento_padrao(hora: int, minuto: int):
+    """Chamado no startup se a tabela estiver vazia — semeia com DAILY_TIME do .env."""
+    with get_conn() as conn:
+        count = conn.execute("SELECT COUNT(*) FROM agendamentos").fetchone()[0]
+        if count == 0:
+            conn.execute(
+                "INSERT INTO agendamentos (hora, minuto, ativo) VALUES (?, ?, 1)",
+                (hora, minuto),
+            )

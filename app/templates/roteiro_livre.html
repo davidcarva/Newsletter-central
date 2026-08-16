@@ -21,9 +21,21 @@
   <form action="/roteiros-livres/{{ r.id }}/regerar" method="post">
     <button class="btn" type="submit" style="width:100%;">🔄 Regerar roteiro</button>
   </form>
+  <form action="/roteiros-livres/{{ r.id }}/enviar-diretor" method="post" style="margin-top:8px;">
+    <button class="btn ghost" type="submit" style="width:100%;">🎬 Enviar pro Diretor</button>
+  </form>
 </aside>
 <section class="content">
   <h2 style="margin-top:0;">🎬 {{ r.titulo }} {% if r.usado %}<span class="badge usado">✅ usado</span>{% endif %}</h2>
+  {% if diretor_ok %}
+    <p style="background:#123; border-left:3px solid #3c9; padding:10px 12px; border-radius:6px; font-size:13px;">
+      ✅ Enviado pro Diretor em <strong>{{ diretor_cenas }} cenas</strong>. Abra o app pra montar as cenas.
+    </p>
+  {% elif diretor_erro %}
+    <p style="background:#311; border-left:3px solid #c55; padding:10px 12px; border-radius:6px; font-size:13px;">
+      ⚠️ {{ diretor_erro }}
+    </p>
+  {% endif %}
   <p style="color:var(--mut); font-size:12px; margin-bottom:12px;">Atualizado em {{ r.criado_em[:19].replace('T',' ') }} UTC</p>
   <div class="roteiro-box">{{ texto_html | safe }}</div>
   <p style="color:var(--mut); font-size:12px; margin-top:16px;">

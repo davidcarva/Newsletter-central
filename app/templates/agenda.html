@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block body %}
+<aside>
+  <h3>Adicionar horário</h3>
+  <form action="/agenda/novo" method="post">
+    <label style="font-size:12px; color:var(--mut); display:block; margin-bottom:6px;">
+      Que horas gerar automaticamente?
+    </label>
+    <input type="time" name="horario" required value="12:00"
+           style="width:100%; margin-bottom:10px;">
+    <button class="btn" type="submit" style="width:100%;">➕ Adicionar</button>
+  </form>
+  <p style="font-size:12px; color:var(--mut); margin-top:16px; line-height:1.5;">
+    Cada horário vira uma execução automática. Fuso: <strong>São Paulo</strong>.
+    Adicione quantos quiser (ex: 07:00, 12:00, 19:00).
+  </p>
+
+  {% if proximas %}
+    <h3 style="margin-top:24px;">Próximas execuções</h3>
+    <ul style="list-style:none; padding:0; margin:0;">
+      {% for p in proximas %}
+        <li style="font-size:13px; color:var(--text); padding:4px 0;">
+          ⏱ {{ p }}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</aside>
+<section class="content">
+  <h2 style="margin-top:0;">⏰ Agenda de geração automática</h2>
+  {% if erro %}
+    <p style="background:rgba(199,84,80,.15); color:#ff9a96; padding:10px; border-radius:6px; margin-bottom:16px;">⚠️ {{ erro }}</p>
+  {% endif %}
+  <p style="color:var(--mut); font-size:13px; margin-bottom:16px;">
+    O servidor precisa estar rodando na hora marcada. Se o PC estiver desligado,
+    a execução é <strong>perdida</strong> (não recupera depois).
+  </p>
+
+  {% if not agendamentos %}
+    <p class="empty">Nenhum horário cadastrado. Adicione ao lado.</p>
+  {% else %}
+    {% for a in agendamentos %}
+      <div class="item" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+        <div>
+          <h4 style="margin:0; font-size:20px;">
+            🕐 {{ '%02d:%02d' % (a.hora, a.minuto) }}
+            {% if not a.ativo %}<span style="font-size:12px; color:var(--mut); font-weight:normal;">(inativo)</span>{% endif %}
+          </h4>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <form action="/agenda/{{ a.id }}/toggle" method="post" class="inline">
+            <button class="btn ghost" type="submit">{{ 'Desativar' if a.ativo else 'Ativar' }}</button>
+          </form>
+          <form action="/agenda/{{ a.id }}/remover" method="post" class="inline"
+                onsubmit="return confirm('Remover este horário?');">
+            <button class="btn danger" type="submit">Excluir</button>
+          </form>
+        </div>
+      </div>
+    {% endfor %}
+  {% endif %}
+</section>
+{% endblock %}

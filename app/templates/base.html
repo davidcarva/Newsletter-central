@@ -95,6 +95,8 @@
   .badge.tipo-noticia { background:rgba(92,201,122,.18); color:#7cd99a; }
   .badge.usado        { background:rgba(232,208,77,.2); color:#ffd76b; }
   .badge.usado.off    { background:transparent; color:var(--mut); border:1px solid var(--line); }
+  .badge.roteiro      { background:rgba(176,110,254,.18); color:#c99cff; text-decoration:none; }
+  .badge.roteiro:hover{ background:rgba(176,110,254,.3); }
   .badge.repetida     { background:rgba(154,160,173,.18); color:#b8bdc9; font-weight:500; white-space:nowrap; vertical-align:middle; margin-left:6px; }
 
   .filtros { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; padding-bottom:16px; border-bottom:1px solid var(--line); }
@@ -108,10 +110,12 @@
   <h1>📰 Newsletter Central</h1>
   <nav>
     <a href="/">Edição</a>
-    <a href="/biblioteca">📚 Biblioteca</a>
+    <a href="/biblioteca">📚 Meus roteiros</a>
     <a href="/roteiros-livres">🎬 Novo roteiro</a>
+    <a href="/analisar-post">🎨 Analisar post</a>
     <a href="/temas">Temas & fontes</a>
-    <a href="/config">⚙️ Estilo</a>
+    <a href="/agenda">⏰ Agenda</a>
+    <a href="/presets">⚙️ Presets</a>
   </nav>
   <form action="/gerar-agora" method="post" class="inline" style="margin-left:auto">
     <button class="btn" type="submit">Gerar agora</button>
