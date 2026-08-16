@@ -52,7 +52,12 @@ def _firestore():
     cred_path = (os.getenv("DIRETOR_CREDENCIAL") or "").strip()
     if not cred_path:
         raise DiretorErro("Falta DIRETOR_CREDENCIAL no .env (arquivo .json da conta de serviço).")
-    if not os.path.exists(cred_path):
+    if os.path.isdir(cred_path):
+        raise DiretorErro(
+            "DIRETOR_CREDENCIAL aponta pra uma PASTA. Aponte pro arquivo .json "
+            f"da conta de serviço (ex: {os.path.join(cred_path, 'minha-chave.json')})."
+        )
+    if not os.path.isfile(cred_path):
         raise DiretorErro(f"Credencial não encontrada: {cred_path}")
     try:
         import firebase_admin
@@ -60,9 +65,14 @@ def _firestore():
     except ImportError as e:
         raise DiretorErro("Instale a dependência: pip install firebase-admin") from e
 
-    if _app_fb is None:
-        _app_fb = firebase_admin.initialize_app(credentials.Certificate(cred_path))
-    return firestore.client(_app_fb)
+    try:
+        if _app_fb is None:
+            _app_fb = firebase_admin.initialize_app(credentials.Certificate(cred_path))
+        return firestore.client(_app_fb)
+    except DiretorErro:
+        raise
+    except Exception as e:  # credencial inválida, sem permissão de leitura, etc.
+        raise DiretorErro(f"Não consegui usar a credencial ({type(e).__name__}): {e}") from e
 
 
 def _decupar(texto: str, titulo: str = "") -> dict:
@@ -127,6 +137,9 @@ def enviar_roteiro(texto: str, titulo: str = "") -> dict:
     uid = _uid()
     db_fs = _firestore()  # valida credencial antes de gastar chamada de IA
     roteiro = _normalizar(_decupar(texto, titulo), titulo)
-    db_fs.collection("users").document(uid).collection("roteiros").document(roteiro["id"]).set(roteiro)
+    try:
+        db_fs.collection("users").document(uid).collection("roteiros").document(roteiro["id"]).set(roteiro)
+    except Exception as e:
+        raise DiretorErro(f"Falha ao gravar no Firestore ({type(e).__name__}): {e}") from e
     log.info("Roteiro '%s' enviado ao Diretor (%d cenas).", roteiro["nome"], len(roteiro["cenas"]))
     return roteiro

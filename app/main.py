@@ -304,6 +304,9 @@ def enviar_item_diretor(item_id: int):
         return RedirectResponse(f"{volta}?enviado=ok&cenas={len(r['cenas'])}", status_code=303)
     except diretor.DiretorErro as e:
         return RedirectResponse(f"{volta}?diretor_erro={quote(str(e))}", status_code=303)
+    except Exception as e:  # nunca deixa virar 500 na cara do usuario
+        log.exception("Falha inesperada ao enviar pro Diretor")
+        return RedirectResponse(f"{volta}?diretor_erro={quote(f'{type(e).__name__}: {e}')}", status_code=303)
 
 
 @app.post("/roteiros-livres/{rid}/enviar-diretor")
@@ -317,6 +320,9 @@ def enviar_livre_diretor(rid: int):
         return RedirectResponse(f"{volta}?enviado=ok&cenas={len(env['cenas'])}", status_code=303)
     except diretor.DiretorErro as e:
         return RedirectResponse(f"{volta}?diretor_erro={quote(str(e))}", status_code=303)
+    except Exception as e:  # nunca deixa virar 500 na cara do usuario
+        log.exception("Falha inesperada ao enviar pro Diretor")
+        return RedirectResponse(f"{volta}?diretor_erro={quote(f'{type(e).__name__}: {e}')}", status_code=303)
 
 
 # ---------- Presets de prompt ----------

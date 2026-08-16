@@ -12,3 +12,5 @@ venv/
 *serviceaccount*.json
 *service-account*.json
 firebase-*.json
+*adminsdk*.json
+*-firebase-*.json
