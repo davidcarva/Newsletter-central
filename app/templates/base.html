@@ -117,9 +117,12 @@
     <a href="/agenda">⏰ Agenda</a>
     <a href="/presets">⚙️ Presets</a>
   </nav>
-  <form action="/gerar-agora" method="post" class="inline" style="margin-left:auto">
-    <button class="btn" type="submit">Gerar agora</button>
-  </form>
+  <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
+    <a class="btn ghost" href="/gerar-periodo" title="Gerar edição de datas passadas">📅 Outro período</a>
+    <form action="/gerar-agora" method="post" class="inline">
+      <button class="btn" type="submit">Gerar agora</button>
+    </form>
+  </div>
 </header>
 <main>
   {% block body %}{% endblock %}

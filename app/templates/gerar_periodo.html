@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block body %}
+<aside>
+  <h3>Como funciona</h3>
+  <p style="font-size:13px; color:var(--text); line-height:1.5;">
+    Monta uma edição com notícias publicadas num período que você escolhe,
+    em vez das últimas 48h.
+  </p>
+  <p style="font-size:12px; color:var(--mut); line-height:1.5; margin-top:12px;">
+    <strong>Ignora o filtro de "já vistos"</strong> — itens que já apareceram
+    antes voltam, marcados com o badge 🕓.
+  </p>
+  <div style="background:rgba(232,156,77,.08); border:1px solid rgba(232,156,77,.3); border-radius:6px; padding:10px; margin-top:14px;">
+    <p style="margin:0; font-size:12px; color:#f0b57e; line-height:1.5;">
+      ⚠️ <strong>Limite da fonte:</strong> RSS não guarda histórico. Cada feed
+      serve só os últimos itens. Quanto mais antiga a data, maior a chance de
+      vir vazio — não é bug, é o dado que não existe mais lá.
+    </p>
+  </div>
+  <p style="font-size:12px; color:var(--mut); line-height:1.5; margin-top:14px;">
+    Na prática: <strong>até ~7 dias</strong> costuma funcionar bem.
+    Acima disso depende de quanto cada site publica.
+  </p>
+</aside>
+<section class="content">
+  <h2 style="margin-top:0;">📅 Gerar edição de outro período</h2>
+  {% if erro %}
+    <p style="background:rgba(199,84,80,.15); color:#ff9a96; padding:10px; border-radius:6px; margin-bottom:16px;">⚠️ {{ erro }}</p>
+  {% endif %}
+
+  <form action="/gerar-periodo" method="post">
+    <div class="periodo-opcao">
+      <label>
+        <input type="radio" name="modo" value="dias" checked>
+        <strong>Últimos N dias</strong>
+      </label>
+      <p class="hint-opcao">Pega tudo publicado nos últimos N dias até agora.</p>
+      <input type="number" name="dias" value="3" min="1" max="60" style="width:90px;"> dias atrás
+    </div>
+
+    <div class="periodo-opcao">
+      <label>
+        <input type="radio" name="modo" value="data">
+        <strong>Um dia específico</strong>
+      </label>
+      <p class="hint-opcao">Só o que foi publicado nesse dia (00:00 às 23:59).</p>
+      <input type="date" name="data" value="{{ ontem }}" max="{{ hoje }}">
+    </div>
+
+    <div class="periodo-opcao">
+      <label>
+        <input type="radio" name="modo" value="intervalo">
+        <strong>Intervalo de datas</strong>
+      </label>
+      <p class="hint-opcao">Usa o campo de data acima como início e este como fim.</p>
+      <input type="date" name="data_fim" value="{{ hoje }}" max="{{ hoje }}">
+    </div>
+
+    <div style="margin:20px 0 16px; padding-top:16px; border-top:1px solid var(--line);">
+      <label style="font-size:13px; color:var(--mut); display:block; margin-bottom:6px;">
+        Limitar a um tema (opcional)
+      </label>
+      <select name="tema_id"
+              style="width:100%; max-width:320px; background:#0f1115; border:1px solid var(--line); color:var(--text); padding:8px; border-radius:6px; font-size:14px;">
+        <option value="">— todos os temas ativos —</option>
+        {% for t in temas %}
+          <option value="{{ t.id }}">{{ t.nome }}{% if not t.ativo %} (inativo){% endif %}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <button class="btn" type="submit">📅 Gerar edição desse período</button>
+    <p style="color:var(--mut); font-size:12px; margin-top:10px;">
+      Pode levar 1-3 minutos (busca feeds, transcreve vídeos do YouTube e resume com IA).
+    </p>
+  </form>
+</section>
+
+<style>
+  .periodo-opcao { padding:14px 0; border-bottom:1px dashed var(--line); }
+  .periodo-opcao label { display:flex; align-items:center; gap:8px; cursor:pointer; font-size:15px; }
+  .periodo-opcao .hint-opcao { margin:4px 0 8px 24px; font-size:12px; color:var(--mut); }
+  .periodo-opcao input[type=number],
+  .periodo-opcao input[type=date] {
+    margin-left:24px; background:#0f1115; border:1px solid var(--line);
+    color:var(--text); padding:8px 10px; border-radius:6px; font-size:14px;
+  }
+</style>
+{% endblock %}

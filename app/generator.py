@@ -149,3 +149,73 @@ async def buscar_extra_tema(tema_id: int, janela_horas: int = 168) -> int:
     db.marcar_vistos([r["link"] for r in resumidos])
     log.info("Busca extra salva como edição #%d", edicao_id)
     return edicao_id
+
+
+async def gerar_edicao_periodo(
+    desde: datetime,
+    ate: datetime,
+    rotulo: str,
+    tema_id: int | None = None,
+    marcar_vistos: bool = False,
+) -> tuple[int, str]:
+    """Monta uma edição com itens publicados entre `desde` e `ate` (UTC).
+
+    Ignora o filtro de 'já vistos' — a ideia é justamente revisitar o passado.
+    Retorna (edicao_id, mensagem). edicao_id = 0 quando não achou nada."""
+    if tema_id:
+        tema = db.obter_tema(tema_id)
+        if not tema or not tema["feeds"]:
+            return 0, "Esse tema não tem fontes cadastradas."
+        temas = {tema["nome"]: tema["feeds"]}
+    else:
+        temas = db.temas_ativos_com_feeds()
+        if not temas:
+            return 0, "Nenhum tema ativo com fontes."
+
+    log.info("Edição de período %s → %s (%d temas)", desde.date(), ate.date(), len(temas))
+    itens = await coletar(temas, desde=desde, ate=ate)
+    log.info("Período coletou %d itens brutos.", len(itens))
+
+    if not itens:
+        return 0, (
+            "Nenhum item encontrado nesse período. Os feeds RSS só servem os itens "
+            "mais recentes — quanto mais antiga a data, menor a chance de ainda estar lá."
+        )
+
+    await enriquecer_com_transcricoes(itens)
+
+    por_link = {}
+    for it in itens:
+        por_link.setdefault(it.link, it)
+
+    por_tema: dict[str, list] = {}
+    for it in por_link.values():
+        por_tema.setdefault(it.tema, []).append(it)
+
+    # Etiqueta o que já apareceu em alguma edição, pra você saber o que é revisita
+    status = db.classificar_vistos(por_link.keys())
+
+    blocos = []
+    for tema in temas.keys():
+        bucket = por_tema.get(tema, [])
+        if not bucket:
+            blocos.append({"tema": tema, "itens": [], "vazio": True})
+            continue
+        bucket.sort(key=lambda x: (x.publicado is None, -(x.publicado.timestamp() if x.publicado else 0)))
+        resumidos = resumir_tema(tema, bucket)
+        for r in resumidos:
+            r["repetida"] = 0 if status.get(r["link"]) == "novo" else 2
+        blocos.append({"tema": tema, "itens": resumidos, "vazio": not resumidos})
+
+    total = sum(len(b["itens"]) for b in blocos)
+    if total == 0:
+        return 0, "A IA não selecionou nenhum item relevante nesse período."
+
+    data_str = f"{datetime.now().strftime('%d/%m/%Y')} · 📅 {rotulo}"
+    html = _renderizar(data_str, blocos)
+    edicao_id = db.salvar_edicao(data_str, html)
+    db.salvar_itens(edicao_id, [b for b in blocos if not b["vazio"]])
+    if marcar_vistos:
+        db.marcar_vistos([item["link"] for b in blocos for item in b["itens"]])
+    log.info("Edição de período salva como #%d (%d itens)", edicao_id, total)
+    return edicao_id, ""

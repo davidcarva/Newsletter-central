@@ -13,16 +13,20 @@ from fastapi.templating import Jinja2Templates
 
 load_dotenv()
 
-from urllib.parse import quote
+import os
+from datetime import datetime, date, time, timedelta, timezone
+from urllib.parse import quote, quote_plus
+from zoneinfo import ZoneInfo
 
 from . import db, diretor
-from .generator import gerar_edicao_async, buscar_extra_tema
+from .generator import gerar_edicao_async, buscar_extra_tema, gerar_edicao_periodo
 from .scheduler import iniciar_scheduler, reagendar, proximas_execucoes
 from .summarizer import gerar_roteiro, gerar_roteiro_livre, analisar_post_e_sugerir
 from .youtube import resolver_canal
 from .social import buscar_metadados
 
 CORES_VALIDAS = {"", "vermelho", "laranja", "amarelo", "verde", "azul", "roxo"}
+TZ_LOCAL = ZoneInfo(os.getenv("TIMEZONE", "America/Sao_Paulo"))
 
 
 def _render_md(texto: str) -> str:
@@ -213,6 +217,69 @@ async def buscar_tema(tema_id: int, janela: int = Form(168)):
     if edicao_id:
         return RedirectResponse(f"/edicao/{edicao_id}", status_code=303)
     return RedirectResponse("/temas", status_code=303)
+
+
+# ---------- Edição de período / datas passadas ----------
+
+@app.get("/gerar-periodo", response_class=HTMLResponse)
+def pagina_gerar_periodo(request: Request, erro: str = ""):
+    hoje = datetime.now(TZ_LOCAL).date()
+    return templates.TemplateResponse(
+        "gerar_periodo.html",
+        {
+            "request": request,
+            "temas": db.listar_temas(),
+            "erro": erro,
+            "hoje": hoje.isoformat(),
+            "ontem": (hoje - timedelta(days=1)).isoformat(),
+        },
+    )
+
+
+@app.post("/gerar-periodo")
+async def executar_gerar_periodo(
+    modo: str = Form("dias"),
+    dias: int = Form(3),
+    data: str = Form(""),
+    data_fim: str = Form(""),
+    tema_id: str = Form(""),
+):
+    """modo: 'dias' (últimos N), 'data' (um dia específico) ou 'intervalo'."""
+    agora = datetime.now(timezone.utc)
+    try:
+        if modo == "dias":
+            n = max(1, min(int(dias), 60))
+            desde = agora - timedelta(days=n)
+            ate = agora
+            rotulo = f"Últimos {n} dia(s)"
+        elif modo == "data":
+            d = date.fromisoformat(data)
+            desde = datetime.combine(d, time.min, tzinfo=TZ_LOCAL).astimezone(timezone.utc)
+            ate = datetime.combine(d, time.max, tzinfo=TZ_LOCAL).astimezone(timezone.utc)
+            rotulo = f"Dia {d.strftime('%d/%m/%Y')}"
+        else:  # intervalo
+            d1 = date.fromisoformat(data)
+            d2 = date.fromisoformat(data_fim)
+            if d2 < d1:
+                d1, d2 = d2, d1
+            desde = datetime.combine(d1, time.min, tzinfo=TZ_LOCAL).astimezone(timezone.utc)
+            ate = datetime.combine(d2, time.max, tzinfo=TZ_LOCAL).astimezone(timezone.utc)
+            rotulo = f"{d1.strftime('%d/%m')} a {d2.strftime('%d/%m/%Y')}"
+    except (ValueError, TypeError):
+        return RedirectResponse(
+            "/gerar-periodo?erro=Data+invalida.+Use+o+seletor+de+data.", status_code=303
+        )
+
+    if desde > agora:
+        return RedirectResponse(
+            "/gerar-periodo?erro=Nao+da+pra+gerar+edicao+do+futuro.", status_code=303
+        )
+
+    tid = int(tema_id) if tema_id.strip().isdigit() else None
+    edicao_id, msg = await gerar_edicao_periodo(desde=desde, ate=ate, rotulo=rotulo, tema_id=tid)
+    if edicao_id:
+        return RedirectResponse(f"/edicao/{edicao_id}", status_code=303)
+    return RedirectResponse(f"/gerar-periodo?erro={quote_plus(msg)}", status_code=303)
 
 
 # ---------- Roteiros livres ----------

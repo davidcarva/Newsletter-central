@@ -51,8 +51,21 @@ def _extrair_fonte(feed) -> str:
     return titulo or "Fonte desconhecida"
 
 
-async def coletar(temas_e_feeds: dict[str, list[str]], janela_horas: int = JANELA_HORAS) -> list[Item]:
-    """Recebe {tema: [urls]} e devolve lista de Item recentes."""
+async def coletar(
+    temas_e_feeds: dict[str, list[str]],
+    janela_horas: int = JANELA_HORAS,
+    desde: datetime | None = None,
+    ate: datetime | None = None,
+) -> list[Item]:
+    """Recebe {tema: [urls]} e devolve lista de Item.
+
+    Por padrão filtra pelas últimas `janela_horas`. Se `desde`/`ate` forem
+    informados, eles têm prioridade e delimitam um intervalo fechado de
+    publicação (útil pra montar edição de um dia passado).
+
+    ⚠️ RSS não guarda histórico: só volta o que o feed ainda serve hoje.
+    Intervalos antigos podem vir vazios — isso é limite da fonte, não bug."""
+    usa_intervalo = desde is not None or ate is not None
     limite = datetime.now(timezone.utc) - timedelta(hours=janela_horas)
     itens: list[Item] = []
 
@@ -77,7 +90,15 @@ async def coletar(temas_e_feeds: dict[str, list[str]], janela_horas: int = JANEL
             if not link or not titulo:
                 continue
             publicado = _parse_data(entry)
-            if publicado and publicado < limite:
+            if usa_intervalo:
+                # Sem data não dá pra afirmar que cai no intervalo pedido — descarta
+                if publicado is None:
+                    continue
+                if desde is not None and publicado < desde:
+                    continue
+                if ate is not None and publicado > ate:
+                    continue
+            elif publicado and publicado < limite:
                 continue
             resumo = getattr(entry, "summary", "") or getattr(entry, "description", "")
             itens.append(
